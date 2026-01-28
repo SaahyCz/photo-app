@@ -1,13 +1,14 @@
-
 <!doctype html>
 <html lang="cs">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover">
+<meta name="color-scheme" content="dark light">
 <title>Work App</title>
 
 <style>
-/* ==== FIXED MOBILE LAYOUT ==== */
+/* ===== RESET & FIX ===== */
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
 html,body{
   margin:0;
   height:100%;
@@ -16,17 +17,16 @@ html,body{
   color:#e9ecf1;
   font-family:system-ui,-apple-system,Segoe UI,Roboto;
 }
-*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
 
-/* ==== APP LAYOUT ==== */
+/* ===== LAYOUT ===== */
 .app{height:100dvh;display:flex;flex-direction:column}
 .topbar{
   flex:0 0 auto;
+  padding:12px 14px;
   display:flex;
   justify-content:space-between;
   align-items:center;
-  padding:12px;
-  border-bottom:1px solid rgba(255,255,255,.08)
+  border-bottom:1px solid rgba(255,255,255,.08);
 }
 .brand{font-weight:900}
 .shell{
@@ -37,7 +37,7 @@ html,body{
   min-height:0;
 }
 
-/* ==== SIDEBAR ==== */
+/* ===== SIDEBAR ===== */
 .sidebar{
   width:300px;
   max-width:100%;
@@ -45,57 +45,59 @@ html,body{
   border-radius:14px;
   display:flex;
   flex-direction:column;
-  overflow:hidden
+  overflow:hidden;
 }
 .sidebar .hdr{
   padding:10px;
   font-weight:900;
   cursor:pointer;
-  border-bottom:1px solid rgba(255,255,255,.08)
+  border-bottom:1px solid rgba(255,255,255,.08);
 }
 .sidebar .list{
   flex:1;
   overflow:auto;
-  padding:8px
+  padding:8px;
 }
 .row{
   display:flex;
-  justify-content:space-between;
   align-items:center;
+  justify-content:space-between;
+  gap:8px;
   padding:8px;
   border-radius:10px;
 }
 .row:hover{background:rgba(255,255,255,.05)}
-.row .l{display:flex;gap:8px;align-items:center}
+.l{display:flex;gap:8px;align-items:center}
 .emoji{width:1.4em;text-align:center}
 
-/* ==== CONTENT ==== */
+/* ===== CONTENT ===== */
 .content{
   flex:1;
   border:1px solid rgba(255,255,255,.08);
   border-radius:14px;
   display:flex;
   flex-direction:column;
-  overflow:hidden
+  overflow:hidden;
 }
 .content .hdr{
   padding:10px;
   border-bottom:1px solid rgba(255,255,255,.08);
   display:flex;
-  justify-content:space-between
+  justify-content:space-between;
+  align-items:center;
 }
 .content .body{
   flex:1;
   overflow:auto;
-  padding:10px
+  padding:10px;
 }
 
-/* ==== FORMS ==== */
+/* ===== UI ===== */
 .card{
   border:1px solid rgba(255,255,255,.08);
   border-radius:14px;
   padding:10px;
-  margin-bottom:10px
+  margin-bottom:10px;
 }
 input{
   width:100%;
@@ -103,36 +105,47 @@ input{
   border-radius:10px;
   border:1px solid rgba(255,255,255,.08);
   background:#111;
-  color:#fff
+  color:#fff;
 }
 button{
-  padding:10px 14px;
+  padding:8px 12px;
   border-radius:10px;
-  border:1px solid rgba(255,255,255,.08);
+  border:1px solid rgba(255,255,255,.15);
   background:#222;
-  color:#fff
+  color:#fff;
+  cursor:pointer;
 }
+button.danger{background:#3a1616}
 
-/* ==== FILE BUTTON ==== */
-.file-btn{
-  position:relative;
-  display:inline-block;
-}
+/* ===== FILE BTN ===== */
+.file-btn{position:relative;display:inline-block}
 .file-btn input{
   position:absolute;
   inset:0;
   opacity:0;
 }
 
-/* ==== MOBILE ==== */
+/* ===== MOBILE ===== */
 @media(max-width:900px){
   .shell{flex-direction:column}
   .sidebar.collapsed .list{display:none}
 }
 
-/* ==== DESKTOP ==== */
-@media(min-width:901px){
-  .top-actions{display:none}
+/* ===== CONFIRM ===== */
+#confirm{
+  position:fixed;
+  inset:0;
+  background:rgba(0,0,0,.5);
+  display:none;
+  align-items:center;
+  justify-content:center;
+}
+#confirm .box{
+  background:#111;
+  border-radius:14px;
+  padding:14px;
+  max-width:300px;
+  width:90%;
 }
 </style>
 </head>
@@ -141,14 +154,11 @@ button{
 <div class="app">
   <div class="topbar">
     <div class="brand">Work App</div>
-    <div class="top-actions">
-      <button id="toggleSidebar">☰ Projekty</button>
-    </div>
   </div>
 
   <div class="shell">
     <aside class="sidebar" id="sidebar">
-      <div class="hdr" id="projectsHeader">Projekty</div>
+      <div class="hdr" id="toggleProjects">Projekty</div>
       <div class="list" id="tree"></div>
     </aside>
 
@@ -162,116 +172,187 @@ button{
   </div>
 </div>
 
+<!-- CONFIRM -->
+<div id="confirm">
+  <div class="box">
+    <div id="confirmText"></div><br>
+    <button id="confirmOk">OK</button>
+    <button id="confirmCancel">Zrušit</button>
+  </div>
+</div>
+
 <script>
-/* ======================
-   STATE + HELPERS
-====================== */
-const $=s=>document.querySelector(s);
-const uid=()=>crypto.randomUUID();
+/* =====================
+   SIMPLE CONFIRM
+===================== */
+function confirmBox(text){
+  return new Promise(res=>{
+    const c=document.getElementById("confirm");
+    document.getElementById("confirmText").textContent=text;
+    c.style.display="flex";
+    confirmOk.onclick=()=>{c.style.display="none";res(true)};
+    confirmCancel.onclick=()=>{c.style.display="none";res(false)};
+  });
+}
+
+/* =====================
+   DB (IndexedDB)
+===================== */
+const DB="work_app";
+function openDB(){
+  return new Promise(r=>{
+    const req=indexedDB.open(DB,1);
+    req.onupgradeneeded=e=>{
+      const db=e.target.result;
+      db.createObjectStore("projects",{keyPath:"id"});
+      db.createObjectStore("folders",{keyPath:"id"});
+      db.createObjectStore("photos",{keyPath:"id"});
+    };
+    req.onsuccess=()=>r(req.result);
+  });
+}
+async function dbAll(store){
+  const db=await openDB();
+  return new Promise(r=>{
+    const tx=db.transaction(store);
+    tx.objectStore(store).getAll().onsuccess=e=>r(e.target.result);
+  });
+}
+async function dbPut(store,obj){
+  const db=await openDB();
+  const tx=db.transaction(store,"readwrite");
+  tx.objectStore(store).put(obj);
+}
+async function dbDel(store,id){
+  const db=await openDB();
+  const tx=db.transaction(store,"readwrite");
+  tx.objectStore(store).delete(id);
+}
+
+/* =====================
+   STATE
+===================== */
 let projects=[],folders=[],photos=[];
 let selProject=null,selFolder=null;
+const uid=()=>crypto.randomUUID();
 
-/* ======================
+/* =====================
    RENDER
-====================== */
+===================== */
+async function refresh(){
+  projects=await dbAll("projects");
+  folders=await dbAll("folders");
+  photos=await dbAll("photos");
+  render();
+}
+
 function render(){
   renderTree();
-  if(!projects.length){renderLanding();return;}
-  if(selFolder)renderFolder();
-  else renderProject();
+  if(!projects.length) return renderLanding();
+  if(selFolder) return renderFolder();
+  renderProject();
 }
 
 function renderTree(){
-  const t=$("#tree"); t.innerHTML="";
+  tree.innerHTML="";
   projects.forEach(p=>{
-    const pr=document.createElement("div");
-    pr.className="row";
-    pr.innerHTML=`<div class="l"><span class="emoji">🏠</span>${p.name}</div>`;
-    pr.onclick=()=>{selProject=p.id;selFolder=null;render();}
-    t.appendChild(pr);
+    const r=document.createElement("div");
+    r.className="row";
+    r.innerHTML=`<div class="l"><span class="emoji">🏠</span>${p.name}</div>`;
+    r.onclick=()=>{selProject=p.id;selFolder=null;render()};
+    tree.appendChild(r);
+
     folders.filter(f=>f.projectId===p.id).forEach(f=>{
       const fr=document.createElement("div");
       fr.className="row";
       fr.style.marginLeft="14px";
       fr.innerHTML=`<div class="l"><span class="emoji">📁</span>${f.name}</div>
-        <button onclick="renameFolder('${f.id}');event.stopPropagation()">✏️</button>`;
-      fr.onclick=()=>{selProject=p.id;selFolder=f.id;render();}
-      t.appendChild(fr);
+      <button onclick="renameFolder('${f.id}');event.stopPropagation()">✏️</button>`;
+      fr.onclick=()=>{selProject=p.id;selFolder=f.id;render()};
+      tree.appendChild(fr);
     });
   });
 }
 
 function renderLanding(){
-  $("#viewTitle").textContent="Vítej";
-  $("#viewBody").innerHTML=`
-  <div class="card">
-    <input id="newProject" placeholder="Název projektu">
-    <button onclick="addProject()">Vytvořit projekt</button>
-  </div>
-  <div style="opacity:.6">Vytvořil Jakub Haas</div>`;
+  viewTitle.textContent="Vítej";
+  viewBody.innerHTML=`
+    <div class="card">
+      <input id="pname" placeholder="Název projektu">
+      <button onclick="addProject()">Vytvořit projekt</button>
+    </div>
+    <div style="opacity:.6">Vytvořil Jakub Haas</div>
+  `;
 }
 
 function renderProject(){
   const p=projects.find(x=>x.id===selProject);
-  $("#viewTitle").textContent="🏠 "+p.name;
-  $("#viewBody").innerHTML=`
-  <div class="card">
-    <input id="newFolder" placeholder="Název složky">
-    <button onclick="addFolder()">Vytvořit složku</button>
-  </div>`;
+  viewTitle.textContent="🏠 "+p.name;
+  viewBody.innerHTML=`
+    <div class="card">
+      <input id="fname" placeholder="Název složky">
+      <button onclick="addFolder()">Vytvořit složku</button>
+    </div>
+  `;
 }
 
 function renderFolder(){
   const f=folders.find(x=>x.id===selFolder);
-  $("#viewTitle").textContent="📁 "+f.name;
-  $("#viewBody").innerHTML=`
-  <div class="card">
-    <label class="file-btn">
-      📷 Foto
-      <input type="file" accept="image/*" capture="environment" onchange="addPhotos(event)">
-    </label>
-    <label class="file-btn">
-      🖼️ Galerie
-      <input type="file" accept="image/*" multiple onchange="addPhotos(event)">
-    </label>
-  </div>`;
+  viewTitle.textContent="📁 "+f.name;
+  viewBody.innerHTML=`
+    <div class="card">
+      <label class="file-btn">
+        📷 Foto
+        <input type="file" accept="image/*" capture="environment" onchange="addPhotos(event)">
+      </label>
+      <label class="file-btn">
+        🖼️ Galerie
+        <input type="file" accept="image/*" multiple onchange="addPhotos(event)">
+      </label>
+    </div>
+  `;
 }
 
-/* ======================
+/* =====================
    ACTIONS
-====================== */
-function addProject(){
-  const n=$("#newProject").value.trim();
+===================== */
+async function addProject(){
+  const n=pname.value.trim();
   if(!n)return;
   const p={id:uid(),name:n};
-  projects.push(p);
+  await dbPut("projects",p);
   selProject=p.id;
-  render();
+  refresh();
 }
 
-function addFolder(){
-  const n=$("#newFolder").value.trim();
+async function addFolder(){
+  const n=fname.value.trim();
   if(!n)return;
-  folders.push({id:uid(),projectId:selProject,name:n});
-  $("#newFolder").value="";
-  render(); // zůstaneš v projektu
+  await dbPut("folders",{id:uid(),projectId:selProject,name:n});
+  fname.value="";
+  refresh();
 }
 
-function renameFolder(id){
+async function renameFolder(id){
   const f=folders.find(x=>x.id===id);
   const n=prompt("Nový název",f.name);
-  if(n){f.name=n;render();}
+  if(n){f.name=n;await dbPut("folders",f);refresh();}
 }
 
-function addPhotos(e){
-  alert("Fotky přidány (demo)");
+async function addPhotos(e){
+  for(const file of e.target.files){
+    await dbPut("photos",{id:uid(),folderId:selFolder,blob:file});
+  }
+  alert("Fotky uloženy");
 }
 
-/* ======================
+/* =====================
    INIT
-====================== */
-$("#projectsHeader").onclick=()=>$("#sidebar").classList.toggle("collapsed");
-render();
+===================== */
+toggleProjects.onclick=()=>{
+  if(window.innerWidth<900) sidebar.classList.toggle("collapsed");
+};
+refresh();
 </script>
 </body>
 </html>
