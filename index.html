@@ -127,6 +127,8 @@
     .sidebar .hdr .h{
       font-weight:800;
       letter-spacing:.2px;
+      cursor:pointer;
+      user-select:none;
     }
     .sidebar .list{
       flex:1 1 auto;
@@ -220,6 +222,9 @@
       color:var(--muted);
       font-size:12px;
       white-space:nowrap;
+      display:flex;
+      align-items:center;
+      gap:8px;
     }
     .mini{
       padding:7px 10px;
@@ -352,6 +357,11 @@
       .sidebar.collapsed .list{ display:none; }
     }
 
+    /* ✅ PC: hide top-right bar */
+    @media (min-width: 901px){
+      .top-actions{ display:none; }
+    }
+
     /* Confirm modal */
     .confirm-overlay[hidden]{ display:none; }
     .confirm-overlay{
@@ -395,7 +405,7 @@
   <div class="shell">
     <aside class="sidebar" id="sidebar">
       <div class="hdr">
-        <div class="h">Projekty</div>
+        <div class="h" id="hdrProjects">Projekty</div>
         <button class="mini" id="btnNewProject">＋</button>
       </div>
       <div class="list" id="tree"></div>
@@ -431,13 +441,11 @@
    Helpers
 ========================= */
 const $ = (sel, el=document) => el.querySelector(sel);
-const $$ = (sel, el=document) => Array.from(el.querySelectorAll(sel));
 
 function nowISO(){ return new Date().toISOString(); }
 function isMobile(){ return window.matchMedia("(max-width: 900px)").matches; }
 
 function sanitizeName(name){
-  // safe for zip paths
   return (name || "Bez názvu")
     .trim()
     .replace(/[\\/:*?"<>|]/g, "_")
@@ -490,6 +498,15 @@ function downloadBlob(blob, filename){
   a.click();
   a.remove();
   setTimeout(() => URL.revokeObjectURL(url), 1000);
+}
+
+function escapeHtml(s){
+  return String(s || "")
+    .replaceAll("&","&amp;")
+    .replaceAll("<","&lt;")
+    .replaceAll(">","&gt;")
+    .replaceAll('"',"&quot;")
+    .replaceAll("'","&#039;");
 }
 
 /* =========================
@@ -554,16 +571,6 @@ async function idbGetAll(storeName, indexName=null, key=null){
   });
 }
 
-async function idbGet(storeName, id){
-  return idbTx(storeName, "readonly", async ([s]) => {
-    return new Promise((resolve, reject) => {
-      const req = s.get(id);
-      req.onsuccess = () => resolve(req.result || null);
-      req.onerror = () => reject(req.error);
-    });
-  });
-}
-
 async function idbPut(storeName, obj){
   return idbTx(storeName, "readwrite", async ([s]) => {
     return new Promise((resolve, reject) => {
@@ -614,9 +621,9 @@ function renderTree(){
   for (const p of state.projects){
     const pRow = document.createElement("div");
     pRow.className = "row" + (p.id === state.selectedProjectId && !state.selectedFolderId ? " active" : "");
+    // ✅ žádný 🏠 ve stromu (aby nebyl 2×)
     pRow.innerHTML = `
       <div class="l">
-        <span class="emoji">🏠</span>
         <div class="name">${escapeHtml(p.name)}</div>
       </div>
       <button class="mini danger" title="Smazat projekt">🗑️</button>
@@ -641,16 +648,26 @@ function renderTree(){
           <span class="emoji">📁</span>
           <div class="name">${escapeHtml(f.name)}</div>
         </div>
-        <button class="mini danger" title="Smazat složku">🗑️</button>
+        <div class="meta">
+          <button class="mini secondary" title="Přejmenovat">✏️</button>
+          <button class="mini danger" title="Smazat složku">🗑️</button>
+        </div>
       `;
       fRow.addEventListener("click", () => {
         selectFolder(f.id);
         if (isMobile()) $("#sidebar").classList.add("collapsed");
       });
-      fRow.querySelector("button").addEventListener("click", async (e) => {
+
+      const [renameBtn, delBtn] = fRow.querySelectorAll("button");
+      renameBtn.addEventListener("click", async (e) => {
+        e.stopPropagation();
+        await uiRenameFolder(f.id);
+      });
+      delBtn.addEventListener("click", async (e) => {
         e.stopPropagation();
         await uiDeleteFolder(f.id);
       });
+
       el.appendChild(fRow);
     }
   }
@@ -694,7 +711,16 @@ function renderLanding(){
   });
 }
 
+function makeActionButton(text, cls, onClick){
+  const b = document.createElement("button");
+  b.className = cls || "";
+  b.textContent = text;
+  b.addEventListener("click", onClick);
+  return b;
+}
+
 function renderProjectView(project){
+  // ✅ 🏠 jen u názvu projektu (ne ve stromu)
   setHeader(`🏠 ${project.name}`, "Projekt");
   const body = $("#viewBody");
   body.innerHTML = `
@@ -727,25 +753,34 @@ function renderProjectView(project){
           <span class="emoji">📁</span>
           <div class="name">${escapeHtml(f.name)}</div>
         </div>
-        <div class="meta">${count} fotek</div>
+        <div class="meta">
+          <span>${count} fotek</span>
+          <button class="mini secondary" title="Přejmenovat">✏️</button>
+        </div>
       `;
       row.addEventListener("click", () => selectFolder(f.id));
+      row.querySelector("button").addEventListener("click", async (e) => {
+        e.stopPropagation();
+        await uiRenameFolder(f.id);
+      });
       list.appendChild(row);
     }
   }
 
   $("#btnCreateFolder").addEventListener("click", async () => {
-    const name = ($("#inpFolderName").value || "").trim();
+    const inp = $("#inpFolderName");
+    const name = (inp.value || "").trim();
     await createFolder(project.id, name || "Nová složka");
+
+    // ✅ zůstaneš v projektu, vyčistí input
+    inp.value = "";
+    inp.focus();
   });
 
-  // Actions: delete project
-  const delBtn = document.createElement("button");
-  delBtn.className = "danger";
-  delBtn.textContent = "🗑️ Smazat projekt";
-  delBtn.addEventListener("click", () => uiDeleteProject(project.id));
-
-  setActions([delBtn]);
+  // ✅ akce nahoře vpravo v content headeru
+  const exportBtn = makeActionButton("⬇︎ Export", "ok", exportSelectedProject);
+  const delBtn = makeActionButton("🗑️ Smazat projekt", "danger", () => uiDeleteProject(project.id));
+  setActions([exportBtn, delBtn]);
 }
 
 function renderFolderView(folder){
@@ -753,20 +788,21 @@ function renderFolderView(folder){
   setHeader(`📁 ${folder.name}`, project ? `Projekt: 🏠 ${project.name}` : "Složka");
   const body = $("#viewBody");
 
+  // ✅ stabilní mobilní upload: Galerie + Foto zvlášť
   body.innerHTML = `
     <div class="card">
       <h3>Přidat fotky</h3>
       <div class="toolbar">
-        <label class="file-btn" title="Vybrat nebo vyfotit">
-          📷 / 🖼️ Přidat
-          <input id="fileInput"
-                 type="file"
-                 accept="image/*"
-                 capture="environment"
-                 multiple />
+        <label class="file-btn" title="Vybrat z galerie">
+          🖼️ Galerie
+          <input id="fileGallery" type="file" accept="image/*" multiple />
+        </label>
+        <label class="file-btn" title="Vyfotit">
+          📷 Foto
+          <input id="fileCamera" type="file" accept="image/*" capture="environment" />
         </label>
         <div style="color:var(--muted);font-size:12px">
-          Na mobilu se nabídne i fotoaparát.
+          Galerie umí více fotek. Foto otevře kameru.
         </div>
       </div>
     </div>
@@ -777,23 +813,29 @@ function renderFolderView(folder){
     </div>
   `;
 
-  const fileInput = $("#fileInput");
-  fileInput.addEventListener("change", async (e) => {
+  const fileGallery = $("#fileGallery");
+  const fileCamera = $("#fileCamera");
+
+  fileGallery.addEventListener("change", async (e) => {
     const files = Array.from(e.target.files || []);
     if (!files.length) return;
     await addPhotosToFolder(folder.id, files);
-    // reset input so same file can be re-selected
-    fileInput.value = "";
+    fileGallery.value = "";
+  });
+
+  fileCamera.addEventListener("change", async (e) => {
+    const files = Array.from(e.target.files || []);
+    if (!files.length) return;
+    await addPhotosToFolder(folder.id, files);
+    fileCamera.value = "";
   });
 
   renderPhotos(folder.id);
 
-  const delFolderBtn = document.createElement("button");
-  delFolderBtn.className = "danger";
-  delFolderBtn.textContent = "🗑️ Smazat složku";
-  delFolderBtn.addEventListener("click", () => uiDeleteFolder(folder.id));
-
-  setActions([delFolderBtn]);
+  const exportBtn = makeActionButton("⬇︎ Export", "ok", exportSelectedProject);
+  const renameBtn = makeActionButton("✏️ Přejmenovat složku", "secondary", () => uiRenameFolder(folder.id));
+  const delFolderBtn = makeActionButton("🗑️ Smazat složku", "danger", () => uiDeleteFolder(folder.id));
+  setActions([exportBtn, renameBtn, delFolderBtn]);
 }
 
 function renderPhotos(folderId){
@@ -858,14 +900,13 @@ function selectFolder(folderId){
 }
 
 /* =========================
-   CRUD: Projects, Folders, Photos
+   CRUD
 ========================= */
 async function refresh(){
   state.projects = (await idbGetAll("projects")).sort((a,b)=> (a.createdAt||"").localeCompare(b.createdAt||""));
-  state.folders = (await idbGetAll("folders")).sort((a,b)=> (a.createdAt||"").localeCompare(b.createdAt||""));
-  state.photos  = (await idbGetAll("photos")).sort((a,b)=> (a.createdAt||"").localeCompare(b.createdAt||""));
+  state.folders  = (await idbGetAll("folders")).sort((a,b)=> (a.createdAt||"").localeCompare(b.createdAt||""));
+  state.photos   = (await idbGetAll("photos")).sort((a,b)=> (a.createdAt||"").localeCompare(b.createdAt||""));
 
-  // keep selection valid
   if (state.selectedFolderId && !state.folders.find(f => f.id === state.selectedFolderId)){
     state.selectedFolderId = null;
   }
@@ -891,7 +932,6 @@ async function refresh(){
     return;
   }
 
-  // default select first project
   selectProject(state.projects[0].id);
 }
 
@@ -904,10 +944,24 @@ async function createProject(name){
   if (isMobile()) $("#sidebar").classList.add("collapsed");
 }
 
+// ✅ FIX: po vytvoření složky zůstat v projektu
 async function createFolder(projectId, name){
   const f = { id: uid(), projectId, name: name.trim(), createdAt: nowISO() };
   await idbPut("folders", f);
-  state.selectedFolderId = f.id;
+
+  state.selectedProjectId = projectId;
+  state.selectedFolderId = null;
+
+  await refresh();
+}
+
+async function uiRenameFolder(folderId){
+  const f = state.folders.find(x => x.id === folderId);
+  if (!f) return;
+  const newName = prompt("Nový název složky:", f.name);
+  if (!newName) return;
+  f.name = newName.trim() || f.name;
+  await idbPut("folders", f);
   await refresh();
 }
 
@@ -917,9 +971,7 @@ async function addPhotosToFolder(folderId, files){
   const projectId = folder.projectId;
 
   for (const file of files){
-    // ensure it's image
     if (!file.type.startsWith("image/")) continue;
-    const blob = file; // File is a Blob
     const rec = {
       id: uid(),
       projectId,
@@ -927,7 +979,7 @@ async function addPhotosToFolder(folderId, files){
       filename: file.name || `foto_${Date.now()}.jpg`,
       type: file.type || "image/jpeg",
       createdAt: nowISO(),
-      blob,
+      blob: file,
     };
     await idbPut("photos", rec);
   }
@@ -950,7 +1002,6 @@ async function uiDeleteFolder(folderId){
   });
   if (!ok) return;
 
-  // delete photos in folder
   const photos = state.photos.filter(p => p.folderId === folderId);
   for (const ph of photos){
     await idbDel("photos", ph.id);
@@ -971,7 +1022,6 @@ async function uiDeleteProject(projectId){
   });
   if (!ok) return;
 
-  // delete all folders + photos for project
   const folders = state.folders.filter(f => f.projectId === projectId);
   const photos  = state.photos.filter(ph => ph.projectId === projectId);
 
@@ -1018,7 +1068,6 @@ function utf8Bytes(str){
 }
 
 function msDosTime(date){
-  // date: JS Date
   const d = date;
   const time =
     ((d.getHours() & 0x1F) << 11) |
@@ -1045,19 +1094,14 @@ async function exportSelectedProject(){
   const folders = state.folders.filter(f => f.projectId === pid);
   const photos = state.photos.filter(ph => ph.projectId === pid);
 
-  // entries: {name, data(Uint8Array), isDir, mtime}
   const entries = [];
-
-  // Always include project root dir
   entries.push({ name: baseDir, data: new Uint8Array(0), isDir:true, mtime: new Date() });
 
-  // Include all folder dirs (even empty)
   for (const f of folders){
     const fName = sanitizeName(f.name);
     entries.push({ name: `${baseDir}${fName}/`, data: new Uint8Array(0), isDir:true, mtime: new Date() });
   }
 
-  // Include photo files
   for (const ph of photos){
     const folder = folders.find(f => f.id === ph.folderId);
     const folderName = folder ? sanitizeName(folder.name) : "Nezarazene";
@@ -1068,7 +1112,6 @@ async function exportSelectedProject(){
     entries.push({ name: path, data: arr, isDir:false, mtime: new Date(ph.createdAt || Date.now()) });
   }
 
-  // Build ZIP
   const outParts = [];
   const centralParts = [];
   let offset = 0;
@@ -1082,14 +1125,11 @@ async function exportSelectedProject(){
     const uncompSize = data.length;
     const gpFlag = 0x0800; // UTF-8
     const method = 0; // stored
-
-    // external attrs: directory bit for dirs
     const extAttr = e.isDir ? 0x10 : 0x00;
 
-    // local file header
     const local = [
       ...u32(0x04034b50),
-      ...u16(20),               // version needed
+      ...u16(20),
       ...u16(gpFlag),
       ...u16(method),
       ...u16(time),
@@ -1098,7 +1138,7 @@ async function exportSelectedProject(){
       ...u32(compSize),
       ...u32(uncompSize),
       ...u16(nameBytes.length),
-      ...u16(0),                // extra length
+      ...u16(0),
     ];
     const localBytes = new Uint8Array(local);
     outParts.push(localBytes, nameBytes, data);
@@ -1106,11 +1146,10 @@ async function exportSelectedProject(){
     const localHeaderOffset = offset;
     offset += localBytes.length + nameBytes.length + data.length;
 
-    // central directory header
     const central = [
       ...u32(0x02014b50),
-      ...u16(0x031E),           // version made by (3=Unix, 30=ver)
-      ...u16(20),               // version needed
+      ...u16(0x031E),
+      ...u16(20),
       ...u16(gpFlag),
       ...u16(method),
       ...u16(time),
@@ -1119,11 +1158,12 @@ async function exportSelectedProject(){
       ...u32(compSize),
       ...u32(uncompSize),
       ...u16(nameBytes.length),
-      ...u16(0),                // extra
-      ...u16(0),                // comment
-      ...u16(0),                // disk number
-      ...u16(0),                // internal attrs
-      ...u32(extAttr << 16),    // external attrs
+      ...u16(0),
+      ...u16(0),
+      ...u16(0),
+      ...u16(0),
+      ...u16(0),
+      ...u32(extAttr << 16),
       ...u32(localHeaderOffset),
     ];
     const centralBytes = new Uint8Array(central);
@@ -1136,16 +1176,15 @@ async function exportSelectedProject(){
   outParts.push(...centralParts);
   offset += centralSize;
 
-  // end of central directory
   const eocd = new Uint8Array([
     ...u32(0x06054b50),
-    ...u16(0),                 // disk
-    ...u16(0),                 // central disk
+    ...u16(0),
+    ...u16(0),
     ...u16(entries.length),
     ...u16(entries.length),
     ...u32(centralSize),
     ...u32(centralOffset),
-    ...u16(0),                 // comment len
+    ...u16(0),
   ]);
   outParts.push(eocd);
 
@@ -1154,22 +1193,14 @@ async function exportSelectedProject(){
 }
 
 /* =========================
-   Escape HTML
-========================= */
-function escapeHtml(s){
-  return String(s || "")
-    .replaceAll("&","&amp;")
-    .replaceAll("<","&lt;")
-    .replaceAll(">","&gt;")
-    .replaceAll('"',"&quot;")
-    .replaceAll("'","&#039;");
-}
-
-/* =========================
    Events
 ========================= */
 $("#btnToggleSidebar").addEventListener("click", () => {
   $("#sidebar").classList.toggle("collapsed");
+});
+
+$("#hdrProjects").addEventListener("click", () => {
+  if (isMobile()) $("#sidebar").classList.toggle("collapsed");
 });
 
 $("#btnNewProject").addEventListener("click", async () => {
@@ -1186,14 +1217,8 @@ $("#btnExport").addEventListener("click", async () => {
    Init
 ========================= */
 (async function init(){
-  // little status
   $("#chipStatus").textContent = "Offline • Lokálně (IndexedDB)";
   await refresh();
-
-  // on rotation / resize keep layout stable
-  window.addEventListener("resize", () => {
-    // no-op; using 100dvh handles mobile address bar better
-  }, { passive:true });
 })();
 </script>
 </body>
