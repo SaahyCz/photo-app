@@ -1,0 +1,525 @@
+<!DOCTYPE html>
+<html lang="cs">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#111827">
+<link rel="manifest" href="manifest.webmanifest">
+<title>Projektový správce fotek</title>
+<script src="https://cdn.jsdelivr.net/npm/jszip@3.10.1/dist/jszip.min.js"></script>
+
+<style>
+  body { margin:0; font-family:system-ui; display:flex; height:100vh; background:#f4f6f8 }
+  #sidebar { width:320px; background:#111827; color:#fff; padding:14px; overflow:auto }
+  .project { font-weight:700; margin:12px 0 6px; cursor:pointer; padding:6px 8px; border-radius:10px; background:#1f2937 }
+  .project.active { outline:2px solid #2563eb }
+  .folder { margin-left:14px; cursor:pointer; color:#d1d5db; padding:6px 8px; border-radius:10px }
+  .folder:hover { background:#1f2937 }
+  .folder.active { background:#2563eb; color:#fff; font-weight:600 }
+
+  button { border:none; border-radius:10px; padding:8px 10px; cursor:pointer }
+  .primary { background:#2563eb; color:white }
+  .ghost { background:#1f2937; color:#fff }
+  .row { display:flex; gap:8px; align-items:center; flex-wrap:wrap }
+
+  #content { flex:1; padding:18px; overflow:auto }
+  .card { background:white; border-radius:16px; padding:14px; margin-bottom:14px; box-shadow:0 1px 2px rgba(0,0,0,.05) }
+
+  .images { display:flex; flex-wrap:wrap; gap:10px }
+  .image-box { width:140px; background:#f3f4f6; padding:8px; border-radius:12px }
+  .image-box img { width:100%; border-radius:10px; display:block; margin-top:6px }
+  .image-box input { width:100%; box-sizing:border-box; border:1px solid #e5e7eb; border-radius:10px; padding:6px 8px }
+
+  .chat { border:1px solid #e5e7eb; border-radius:14px; padding:10px; max-height:240px; overflow:auto; background:#fafafa }
+  .msg { margin:0 0 10px; }
+  .bubble { display:inline-block; padding:8px 10px; border-radius:14px; background:#e5e7eb }
+  .meta { color:#6b7280; font-size:12px; margin-top:4px }
+
+  textarea, input[type="text"] { width:100%; box-sizing:border-box; border:1px solid #e5e7eb; border-radius:12px; padding:10px; }
+  textarea { min-height:80px; resize:vertical }
+
+  .hint { color:#6b7280; font-size:13px; margin-top:6px }
+
+  .toast {
+    position:fixed; bottom:18px; right:18px;
+    background:#111827; color:white; padding:10px 14px;
+    border-radius:12px; opacity:0; transition:.25s;
+    box-shadow:0 10px 30px rgba(0,0,0,.2);
+  }
+  .toast.show { opacity:1 }
+
+  /* mobile */
+  @media (max-width: 860px){
+    body{ flex-direction:column; height:100dvh; }
+    #sidebar{ width:auto; height:42dvh; }
+    #content{ height:58dvh; }
+  }
+</style>
+</head>
+
+<body>
+  <div id="sidebar">
+    <div class="row" style="margin-bottom:10px">
+      <button class="primary" onclick="addProject()">➕ Nový projekt</button>
+    </div>
+    <div id="tree"></div>
+  </div>
+
+  <div id="content">
+    <h2>Vyber projekt nebo složku</h2>
+    <div class="hint">Tip: pro mobilní „appku“ otevři stránku v Chrome/Edge a zvol „Přidat na plochu“.</div>
+  </div>
+
+  <div class="toast" id="toast"></div>
+
+<script>
+/** Register service worker for PWA/offline */
+if ("serviceWorker" in navigator) {
+  window.addEventListener("load", () => navigator.serviceWorker.register("./sw.js").catch(()=>{}));
+}
+
+/** IndexedDB: store image Blobs safely */
+const DB_NAME = "photo_manager_db";
+const DB_VER = 1;
+const STORE = "images";
+
+function idbOpen() {
+  return new Promise((resolve, reject) => {
+    const req = indexedDB.open(DB_NAME, DB_VER);
+    req.onupgradeneeded = () => {
+      const db = req.result;
+      if (!db.objectStoreNames.contains(STORE)) db.createObjectStore(STORE);
+    };
+    req.onsuccess = () => resolve(req.result);
+    req.onerror = () => reject(req.error);
+  });
+}
+async function idbSet(key, blob) {
+  const db = await idbOpen();
+  return new Promise((resolve, reject) => {
+    const tx = db.transaction(STORE, "readwrite");
+    tx.objectStore(STORE).put(blob, key);
+    tx.oncomplete = () => resolve();
+    tx.onerror = () => reject(tx.error);
+  });
+}
+async function idbGet(key) {
+  const db = await idbOpen();
+  return new Promise((resolve, reject) => {
+    const tx = db.transaction(STORE, "readonly");
+    const req = tx.objectStore(STORE).get(key);
+    req.onsuccess = () => resolve(req.result || null);
+    req.onerror = () => reject(req.error);
+  });
+}
+async function idbDel(key) {
+  const db = await idbOpen();
+  return new Promise((resolve, reject) => {
+    const tx = db.transaction(STORE, "readwrite");
+    tx.objectStore(STORE).delete(key);
+    tx.oncomplete = () => resolve();
+    tx.onerror = () => reject(tx.error);
+  });
+}
+
+/** App metadata */
+let db = { projects: {} };
+let currentProject = null;
+let currentFolder = null;
+
+function toast(msg){
+  const t=document.getElementById("toast");
+  t.textContent=msg; t.classList.add("show");
+  setTimeout(()=>t.classList.remove("show"),1800);
+}
+function saveMeta(){ localStorage.setItem("photo_meta_v4", JSON.stringify(db)); }
+function loadMeta(){
+  const d = localStorage.getItem("photo_meta_v4");
+  if (d) db = JSON.parse(d);
+}
+loadMeta();
+
+/** Helpers */
+function nowStr(){ return new Date().toLocaleString(); }
+function safeName(s){
+  return (s || "")
+    .trim()
+    .replace(/[\\/:*?"<>|]+/g, "_")
+    .replace(/\s+/g, " ")
+    .slice(0, 120) || "soubor";
+}
+function ensurePng(name){
+  const n = safeName(name);
+  return n.toLowerCase().endsWith(".png") ? n : (n + ".png");
+}
+function escapeHtml(s){
+  return (s||"").replace(/[&<>"']/g, ch => ({
+    "&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#039;"
+  }[ch]));
+}
+
+/** Sidebar tree */
+function renderTree(){
+  const t = document.getElementById("tree");
+  t.innerHTML = "";
+
+  Object.values(db.projects).forEach(p => {
+    const proj = document.createElement("div");
+    proj.className = "project" + (p.id === currentProject ? " active" : "");
+    proj.textContent = p.name;
+    proj.onclick = () => openProject(p.id);
+    t.appendChild(proj);
+
+    Object.values(p.folders).forEach(f => {
+      const fd = document.createElement("div");
+      fd.className = "folder" + (currentFolder === f.id ? " active" : "");
+      // 🏠 emoji for folder label as requested
+      fd.textContent = "🏠 📁 " + f.name;
+      fd.onclick = (e) => { e.stopPropagation(); openFolder(p.id, f.id); };
+      t.appendChild(fd);
+    });
+  });
+}
+
+/** Project */
+function addProject(){
+  const name = prompt("Název projektu:");
+  if(!name) return;
+  const id = Date.now().toString();
+  db.projects[id] = {
+    id,
+    name: safeName(name),
+    created: nowStr(),
+    technici: [],
+    folders: {},
+    images: {}
+  };
+  saveMeta();
+  renderTree();
+  toast("✅ Projekt vytvořen");
+}
+
+function openProject(pid){
+  currentProject = pid;
+  currentFolder = null;
+  const p = db.projects[pid];
+
+  document.getElementById("content").innerHTML = `
+    <div class="card">
+      <div class="row" style="justify-content:space-between">
+        <div>
+          <h2 style="margin:0 0 6px">${escapeHtml(p.name)}</h2>
+          <div style="color:#6b7280;font-size:13px">Založeno: ${escapeHtml(p.created)}</div>
+        </div>
+        <div class="row">
+          <button class="primary" onclick="exportProjectSafe()">📦 Export (bez blokování Windows)</button>
+        </div>
+      </div>
+      <div class="hint">
+        Používá systémové <b>Uložit jako…</b> (Edge/Chrome na Windows/Android).
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="row">
+        <button class="ghost" onclick="addFolder()">➕ Nová složka</button>
+      </div>
+
+      <div style="margin-top:10px">
+        <div style="font-weight:600;margin-bottom:6px">Technici</div>
+        <div class="row">
+          <input id="techInput" type="text" placeholder="Jméno technika…" style="flex:1; min-width:180px">
+          <button class="primary" onclick="addTech()">Přidat</button>
+        </div>
+        <div id="techList" style="margin-top:10px;color:#111827"></div>
+      </div>
+    </div>
+  `;
+  renderTech();
+  renderTree();
+}
+
+function renderTech(){
+  const p = db.projects[currentProject];
+  const el = document.getElementById("techList");
+  if (!el) return;
+  if (p.technici.length === 0) {
+    el.innerHTML = `<div style="color:#6b7280">Zatím žádní technici.</div>`;
+    return;
+  }
+  el.innerHTML = p.technici.map((t, idx) => `
+    <div class="row" style="justify-content:space-between;margin:6px 0">
+      <div>👷 ${escapeHtml(t)}</div>
+      <button onclick="removeTech(${idx})">🗑️</button>
+    </div>
+  `).join("");
+}
+
+function addTech(){
+  const input = document.getElementById("techInput");
+  const val = (input?.value || "").trim();
+  if (!val) return;
+  db.projects[currentProject].technici.push(val);
+  input.value = "";
+  saveMeta();
+  renderTech();
+  toast("👷 Technik přidán");
+}
+function removeTech(idx){
+  db.projects[currentProject].technici.splice(idx,1);
+  saveMeta();
+  renderTech();
+}
+
+/** Folders */
+function addFolder(){
+  if (!currentProject) return toast("Vyber projekt");
+  const name = prompt("Název složky:");
+  if(!name) return;
+  const id = Date.now().toString();
+  db.projects[currentProject].folders[id] = {
+    id,
+    name: safeName(name),
+    chat: []
+  };
+  saveMeta();
+  renderTree();
+  toast("📁 Složka vytvořena");
+}
+
+function openFolder(pid, fid){
+  currentProject = pid;
+  currentFolder = fid;
+  const p = db.projects[pid];
+  const f = p.folders[fid];
+
+  document.getElementById("content").innerHTML = `
+    <div class="card">
+      <div class="row" style="justify-content:space-between">
+        <div>
+          <div style="color:#6b7280;font-size:13px">${escapeHtml(p.name)}</div>
+          <h2 style="margin:2px 0 0">${escapeHtml(f.name)}</h2>
+        </div>
+        <button class="ghost" onclick="openProject('${pid}')">← Zpět na projekt</button>
+      </div>
+    </div>
+
+    <div class="card">
+      <div style="font-weight:600;margin-bottom:8px">Komentáře (chat)</div>
+      <div class="chat" id="chat"></div>
+      <div class="row" style="margin-top:10px">
+        <input id="authorInput" type="text" placeholder="Autor (volitelné)" style="flex:1; min-width:160px">
+        <input id="chatInput" type="text" placeholder="Napiš komentář…" style="flex:2; min-width:220px">
+        <button class="primary" onclick="sendMsg()">Odeslat</button>
+      </div>
+    </div>
+
+    <div class="card">
+      <div style="font-weight:600;margin-bottom:8px">Fotky</div>
+      <div class="row" style="margin-bottom:10px">
+        <input type="file" accept="image/*" capture="environment" onchange="uploadImage(event)">
+        <div class="hint">Na mobilu nabídne i fotoaparát.</div>
+      </div>
+      <div class="images" id="images"></div>
+    </div>
+  `;
+
+  renderChat();
+  renderImages();
+  renderTree();
+}
+
+/** Chat */
+function sendMsg(){
+  const author = (document.getElementById("authorInput")?.value || "").trim();
+  const text = (document.getElementById("chatInput")?.value || "").trim();
+  if(!text) return;
+
+  const f = db.projects[currentProject].folders[currentFolder];
+  f.chat.push({ author: author || "—", text, time: nowStr() });
+
+  document.getElementById("chatInput").value = "";
+  saveMeta();
+  renderChat();
+  toast("💬 Odesláno");
+}
+
+function renderChat(){
+  const c = document.getElementById("chat");
+  if (!c) return;
+  const f = db.projects[currentProject].folders[currentFolder];
+  if (!f.chat.length){
+    c.innerHTML = `<div style="color:#6b7280">Zatím žádné zprávy.</div>`;
+    return;
+  }
+  c.innerHTML = f.chat.map(m => `
+    <div class="msg">
+      <div class="bubble">${escapeHtml(m.text)}</div>
+      <div class="meta">${escapeHtml(m.author)} • ${escapeHtml(m.time)}</div>
+    </div>
+  `).join("");
+  c.scrollTop = c.scrollHeight;
+}
+
+/** Images */
+async function uploadImage(e){
+  if(!currentFolder) return toast("Vyber složku");
+  const file = e.target.files?.[0];
+  if(!file) return;
+
+  const base = file.name.replace(/\.[^.]+$/,"");
+  const desired = prompt("Název fotky (bez .png):", base);
+  if (desired === null) return;
+  const finalName = ensurePng(desired);
+
+  const imageId = Date.now().toString();
+  const blob = new Blob([await file.arrayBuffer()], { type: file.type || "image/png" });
+
+  await idbSet(imageId, blob);
+
+  db.projects[currentProject].images[imageId] = {
+    id: imageId,
+    folderId: currentFolder,
+    name: finalName,
+    created: nowStr()
+  };
+  saveMeta();
+
+  e.target.value = "";
+  renderImages();
+  toast("📸 Foto úspěšně přidáno");
+}
+
+async function renderImages(){
+  const d = document.getElementById("images");
+  if (!d) return;
+  d.innerHTML = "";
+
+  const p = db.projects[currentProject];
+  const imgs = Object.values(p.images).filter(i => i.folderId === currentFolder);
+
+  if (!imgs.length){
+    d.innerHTML = `<div style="color:#6b7280">Zatím žádné fotky.</div>`;
+    return;
+  }
+
+  for (const meta of imgs){
+    const blob = await idbGet(meta.id);
+    if (!blob) continue;
+
+    const url = URL.createObjectURL(blob);
+    const box = document.createElement("div");
+    box.className = "image-box";
+    box.innerHTML = `
+      <input value="${meta.name}" />
+      <img src="${url}" alt="">
+      <div class="row" style="justify-content:space-between; margin-top:6px">
+        <button onclick="deleteImage('${meta.id}')">🗑️</button>
+        <div style="color:#6b7280;font-size:12px">${escapeHtml(meta.created)}</div>
+      </div>
+    `;
+
+    const input = box.querySelector("input");
+    input.oninput = () => {
+      meta.name = ensurePng(input.value.replace(/\.png$/i,""));
+      saveMeta();
+    };
+
+    d.appendChild(box);
+  }
+}
+
+async function deleteImage(imageId){
+  const p = db.projects[currentProject];
+  if (!p.images[imageId]) return;
+  await idbDel(imageId);
+  delete p.images[imageId];
+  saveMeta();
+  renderImages();
+  toast("🗑️ Foto smazáno");
+}
+
+/** Build ZIP blob */
+async function buildZipBlobForProject(projectId){
+  const p = db.projects[projectId];
+  const zip = new JSZip();
+
+  const rootName = safeName(p.name) || "Projekt";
+  const root = zip.folder(rootName);
+
+  const photosCount = Object.keys(p.images).length;
+  const tech = p.technici.length ? p.technici.join(", ") : "-";
+  let readme = "";
+  readme += `Projekt: ${p.name}\r\n`;
+  readme += `Datum založení: ${p.created}\r\n`;
+  readme += `Technici: ${tech}\r\n`;
+  readme += `Počet fotek: ${photosCount}\r\n\r\n`;
+  readme += `Komentáře:\r\n`;
+
+  Object.values(p.folders).forEach(f => {
+    readme += `\r\n[${f.name}]\r\n`;
+    if (!f.chat?.length) {
+      readme += `- (bez zpráv)\r\n`;
+    } else {
+      f.chat.forEach(m => {
+        readme += `- ${m.time} (${m.author}): ${m.text}\r\n`;
+      });
+    }
+  });
+
+  root.file("README.txt", readme);
+
+  for (const meta of Object.values(p.images)){
+    const folder = p.folders[meta.folderId];
+    const folderName = folder ? safeName(folder.name) : "Nezarazeno";
+    const blob = await idbGet(meta.id);
+    if (!blob) continue;
+
+    const fileName = ensurePng(meta.name.replace(/\.png$/i,""));
+    root.folder(folderName).file(fileName, blob, { binary: true });
+  }
+
+  return await zip.generateAsync({ type: "blob", compression: "DEFLATE" });
+}
+
+/** Export: SAFE Save As (only button kept) */
+async function exportProjectSafe(){
+  if(!currentProject) return;
+
+  if (!window.showSaveFilePicker) {
+    toast("Pro bezpečný export otevři v Chrome/Edge (Windows/Android).");
+    return;
+  }
+
+  try {
+    const p = db.projects[currentProject];
+    const blob = await buildZipBlobForProject(currentProject);
+
+    const handle = await window.showSaveFilePicker({
+      suggestedName: safeName(p.name) + ".zip",
+      types: [{
+        description: "ZIP archiv",
+        accept: { "application/zip": [".zip"] }
+      }]
+    });
+
+    const writable = await handle.createWritable();
+    await writable.write(blob);
+    await writable.close();
+
+    toast("📦 Export uložen (bez blokování Windows)");
+  } catch (err) {
+    if (String(err?.name || "").toLowerCase().includes("abort")) {
+      toast("Uložení zrušeno");
+      return;
+    }
+    console.error(err);
+    toast("Nepodařilo se uložit ZIP");
+  }
+}
+
+/** init */
+renderTree();
+</script>
+</body>
+</html>
