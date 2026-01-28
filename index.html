@@ -323,7 +323,6 @@
       font-weight:900;
     }
     .ph .x{ top:6px; right:6px; }
-    .ph .edit{ bottom:6px; right:6px; }
 
     .landing{
       display:flex;
@@ -1000,17 +999,8 @@ function renderPhotos(folderId){
       await deletePhoto(ph.id);
     });
 
-    const edit = document.createElement("button");
-    edit.className = "edit";
-    edit.textContent = "✎";
-    edit.title = "Upravit popis";
-    edit.addEventListener("click", async () => {
-      await uiEditPhotoMeta(ph.id);
-    });
-
     card.appendChild(img);
     card.appendChild(del);
-    card.appendChild(edit);
     wrap.appendChild(card);
   }
 }
@@ -1100,39 +1090,7 @@ async function uiRenameFolder(folderId){
   await refresh();
 }
 
-async function uiEditPhotoMeta(photoId){
-  const ph = state.photos.find(x => x.id === photoId);
-  if (!ph) return;
-
-  const preset = {
-    name: ph.label || baseNameNoExt(ph.filename) || "",
-    tech: ph.tech || "",
-    notes: ph.notes || ""
-  };
-
-  const res = await openPhotoMetaModal({
-    title: "Upravit popis fotky",
-    preset
-  });
-  if (!res) return;
-
-  const ext = extFromMimeOrName({ name: ph.filename, type: ph.type });
-  const clean = sanitizeName(res.name || preset.name || "foto");
-  const filename = clean ? `${clean}.${ext}` : ph.filename;
-
-  const updated = {
-    ...ph,
-    label: res.name || ph.label || "",
-    tech: res.tech || "",
-    notes: res.notes || "",
-    filename
-  };
-
-  await idbPut("photos", updated);
-  await refresh();
-}
-
-async function addPhotosToFolder(folderId, files, { askMeta=false } = {}){
+async function addPhotosToFolder(folderId, files){
   const folder = state.folders.find(f => f.id === folderId);
   if (!folder) return;
   const projectId = folder.projectId;
@@ -1140,25 +1098,22 @@ async function addPhotosToFolder(folderId, files, { askMeta=false } = {}){
   for (const file of files){
     if (!file.type.startsWith("image/")) continue;
 
-    let meta = null;
-    if (askMeta){
-      const defaultName = baseNameNoExt(file.name) || "foto";
-      meta = await openPhotoMetaModal({
-        title: "Popis fotky",
-        preset: { name: defaultName, tech: folder.tech || "", notes: "" }
-      });
-      if (meta === null){
-        // zrušeno – fotku neukládat
-        continue;
-      }
-      // pokud prázdné jméno, vezmi default (ale povolíme i prázdné – pak použijeme "foto_...")
-      if (!meta.name.trim()) meta.name = defaultName;
+    const suggested = baseNameNoExt(file.name) || "foto";
+    const asked = prompt("Zadej název fotky:", suggested);
+
+    // Cancel -> neukládat
+    if (asked === null) continue;
+
+    const name = asked.trim();
+    // Prázdné -> neukládat (vynucení vyplnění)
+    if (!name){
+      alert("Musíš zadat název fotky.");
+      continue;
     }
 
     const ext = extFromMimeOrName(file);
-    const label = meta?.name?.trim() || "";
-    const safeBase = label ? sanitizeName(label) : sanitizeName(baseNameNoExt(file.name) || `foto_${Date.now()}`);
-    const filename = `${safeBase}.${ext}`;
+    const base = sanitizeName(name);
+    const filename = `${base}.${ext}`;
 
     const rec = {
       id: uid(),
@@ -1168,16 +1123,17 @@ async function addPhotosToFolder(folderId, files, { askMeta=false } = {}){
       type: file.type || "image/jpeg",
       createdAt: nowISO(),
       blob: file,
-      // metadata
-      label: label || safeBase,
-      tech: meta?.tech?.trim() || "",
-      notes: meta?.notes?.trim() || ""
+      label: base,
+      tech: "",
+      notes: ""
     };
+
     await idbPut("photos", rec);
   }
 
   await refresh();
 }
+
 
 async function deletePhoto(photoId){
   await idbDel("photos", photoId);
