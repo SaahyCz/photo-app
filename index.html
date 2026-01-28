@@ -1,358 +1,1200 @@
 <!doctype html>
 <html lang="cs">
 <head>
-<meta charset="utf-8">
-<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover">
-<meta name="color-scheme" content="dark light">
-<title>Work App</title>
+  <meta charset="utf-8" />
+  <meta name="viewport"
+        content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover" />
+  <meta name="color-scheme" content="dark light" />
+  <title>Work App</title>
+  <style>
+    :root{
+      --bg:#0b0c0f;
+      --panel:#11131a;
+      --panel2:#0f1016;
+      --text:#e9ecf1;
+      --muted:#a8b0bd;
+      --border:rgba(255,255,255,.08);
+      --danger:#ff4d4d;
+      --ok:#49d17a;
+      --shadow:0 10px 40px rgba(0,0,0,.45);
+      --radius:16px;
+      --radius2:12px;
+    }
 
-<style>
-/* ===== RESET & FIX ===== */
-*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
-html,body{
-  margin:0;
-  height:100%;
-  overflow:hidden;
-  background:#0b0c0f;
-  color:#e9ecf1;
-  font-family:system-ui,-apple-system,Segoe UI,Roboto;
-}
+    *{ box-sizing:border-box; -webkit-tap-highlight-color: transparent; }
+    html, body { height:100%; margin:0; }
+    body{
+      background:var(--bg);
+      color:var(--text);
+      font: 14px/1.35 system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif;
+      overflow:hidden; /* 🔒 fix screen */
+      overscroll-behavior: none;
+      touch-action: manipulation;
+    }
 
-/* ===== LAYOUT ===== */
-.app{height:100dvh;display:flex;flex-direction:column}
-.topbar{
-  flex:0 0 auto;
-  padding:12px 14px;
-  display:flex;
-  justify-content:space-between;
-  align-items:center;
-  border-bottom:1px solid rgba(255,255,255,.08);
-}
-.brand{font-weight:900}
-.shell{
-  flex:1;
-  display:flex;
-  gap:12px;
-  padding:12px;
-  min-height:0;
-}
+    .app{
+      height:100dvh;
+      display:flex;
+      flex-direction:column;
+      padding: env(safe-area-inset-top) 0 env(safe-area-inset-bottom) 0;
+    }
 
-/* ===== SIDEBAR ===== */
-.sidebar{
-  width:300px;
-  max-width:100%;
-  border:1px solid rgba(255,255,255,.08);
-  border-radius:14px;
-  display:flex;
-  flex-direction:column;
-  overflow:hidden;
-}
-.sidebar .hdr{
-  padding:10px;
-  font-weight:900;
-  cursor:pointer;
-  border-bottom:1px solid rgba(255,255,255,.08);
-}
-.sidebar .list{
-  flex:1;
-  overflow:auto;
-  padding:8px;
-}
-.row{
-  display:flex;
-  align-items:center;
-  justify-content:space-between;
-  gap:8px;
-  padding:8px;
-  border-radius:10px;
-}
-.row:hover{background:rgba(255,255,255,.05)}
-.l{display:flex;gap:8px;align-items:center}
-.emoji{width:1.4em;text-align:center}
+    /* Header (fixed area) */
+    .topbar{
+      flex:0 0 auto;
+      display:flex;
+      align-items:center;
+      justify-content:space-between;
+      gap:12px;
+      padding:12px 14px;
+      border-bottom:1px solid var(--border);
+      background: linear-gradient(180deg, rgba(17,19,26,0.95), rgba(17,19,26,0.72));
+      backdrop-filter: blur(10px);
+    }
+    .brand{
+      display:flex;
+      align-items:center;
+      gap:10px;
+      min-width:0;
+    }
+    .brand .title{
+      font-weight:800;
+      letter-spacing:.2px;
+      white-space:nowrap;
+      overflow:hidden;
+      text-overflow:ellipsis;
+      max-width:56vw;
+    }
+    .chip{
+      font-size:12px;
+      color:var(--muted);
+      border:1px solid var(--border);
+      padding:4px 8px;
+      border-radius:999px;
+      white-space:nowrap;
+    }
+    .top-actions{
+      display:flex;
+      gap:8px;
+      align-items:center;
+    }
 
-/* ===== CONTENT ===== */
-.content{
-  flex:1;
-  border:1px solid rgba(255,255,255,.08);
-  border-radius:14px;
-  display:flex;
-  flex-direction:column;
-  overflow:hidden;
-}
-.content .hdr{
-  padding:10px;
-  border-bottom:1px solid rgba(255,255,255,.08);
-  display:flex;
-  justify-content:space-between;
-  align-items:center;
-}
-.content .body{
-  flex:1;
-  overflow:auto;
-  padding:10px;
-}
+    button{
+      appearance:none;
+      border:1px solid var(--border);
+      background: rgba(255,255,255,.06);
+      color:var(--text);
+      border-radius:12px;
+      padding:10px 12px;
+      min-height:44px; /* mobile-friendly */
+      font-weight:650;
+      cursor:pointer;
+    }
+    button:active{ transform: translateY(1px); }
+    button.secondary{ background:transparent; }
+    button.danger{ border-color: rgba(255,77,77,.35); background: rgba(255,77,77,.12); }
+    button.ok{ border-color: rgba(73,209,122,.35); background: rgba(73,209,122,.12); }
 
-/* ===== UI ===== */
-.card{
-  border:1px solid rgba(255,255,255,.08);
-  border-radius:14px;
-  padding:10px;
-  margin-bottom:10px;
-}
-input{
-  width:100%;
-  padding:10px;
-  border-radius:10px;
-  border:1px solid rgba(255,255,255,.08);
-  background:#111;
-  color:#fff;
-}
-button{
-  padding:8px 12px;
-  border-radius:10px;
-  border:1px solid rgba(255,255,255,.15);
-  background:#222;
-  color:#fff;
-  cursor:pointer;
-}
-button.danger{background:#3a1616}
+    /* Layout */
+    .shell{
+      flex:1 1 auto;
+      min-height:0;
+      display:flex;
+      gap:12px;
+      padding:12px;
+    }
+    .sidebar{
+      width:320px;
+      min-width:260px;
+      max-width:380px;
+      border:1px solid var(--border);
+      border-radius: var(--radius);
+      background: rgba(17,19,26,.82);
+      box-shadow: var(--shadow);
+      overflow:hidden;
+      display:flex;
+      flex-direction:column;
+    }
+    .sidebar .hdr{
+      flex:0 0 auto;
+      padding:12px 12px 10px;
+      border-bottom:1px solid var(--border);
+      display:flex;
+      align-items:center;
+      justify-content:space-between;
+      gap:8px;
+    }
+    .sidebar .hdr .h{
+      font-weight:800;
+      letter-spacing:.2px;
+    }
+    .sidebar .list{
+      flex:1 1 auto;
+      min-height:0;
+      overflow:auto; /* only inner scroll in sidebar */
+      -webkit-overflow-scrolling: touch;
+      padding:8px;
+    }
 
-/* ===== FILE BTN ===== */
-.file-btn{position:relative;display:inline-block}
-.file-btn input{
-  position:absolute;
-  inset:0;
-  opacity:0;
-}
+    .content{
+      flex:1 1 auto;
+      min-width:0;
+      border:1px solid var(--border);
+      border-radius: var(--radius);
+      background: rgba(17,19,26,.55);
+      box-shadow: var(--shadow);
+      overflow:hidden;
+      display:flex;
+      flex-direction:column;
+    }
+    .content .hdr{
+      flex:0 0 auto;
+      padding:12px;
+      border-bottom:1px solid var(--border);
+      display:flex;
+      align-items:center;
+      justify-content:space-between;
+      gap:10px;
+      min-width:0;
+    }
+    .content .hdr .left{
+      min-width:0;
+    }
+    .content .hdr .title{
+      font-size:16px;
+      font-weight:850;
+      white-space:nowrap;
+      overflow:hidden;
+      text-overflow:ellipsis;
+      max-width:60vw;
+    }
+    .content .hdr .sub{
+      margin-top:2px;
+      color:var(--muted);
+      font-size:12px;
+    }
+    .content .body{
+      flex:1 1 auto;
+      min-height:0;
+      overflow:auto; /* ✅ single main scroll */
+      -webkit-overflow-scrolling: touch;
+      padding:12px;
+    }
 
-/* ===== MOBILE ===== */
-@media(max-width:900px){
-  .shell{flex-direction:column}
-  .sidebar.collapsed .list{display:none}
-}
+    /* Tree items */
+    .row{
+      display:flex;
+      align-items:center;
+      justify-content:space-between;
+      gap:10px;
+      padding:10px 10px;
+      border-radius:12px;
+      border:1px solid transparent;
+      user-select:none;
+    }
+    .row:hover{ background: rgba(255,255,255,.04); }
+    .row.active{
+      background: rgba(255,255,255,.06);
+      border-color: rgba(255,255,255,.08);
+    }
+    .row .l{
+      display:flex;
+      align-items:center;
+      gap:10px;
+      min-width:0;
+    }
+    .emoji{
+      width:1.4em;
+      display:inline-block;
+      text-align:center;
+    }
+    .row .name{
+      font-weight:750;
+      min-width:0;
+      display:-webkit-box;
+      -webkit-line-clamp:2;
+      -webkit-box-orient:vertical;
+      overflow:hidden;
+    }
+    .row .meta{
+      color:var(--muted);
+      font-size:12px;
+      white-space:nowrap;
+    }
+    .mini{
+      padding:7px 10px;
+      min-height:36px;
+      border-radius:10px;
+      font-weight:750;
+    }
 
-/* ===== CONFIRM ===== */
-#confirm{
-  position:fixed;
-  inset:0;
-  background:rgba(0,0,0,.5);
-  display:none;
-  align-items:center;
-  justify-content:center;
-}
-#confirm .box{
-  background:#111;
-  border-radius:14px;
-  padding:14px;
-  max-width:300px;
-  width:90%;
-}
-</style>
+    /* Inline form */
+    .card{
+      border:1px solid var(--border);
+      border-radius: var(--radius);
+      background: rgba(15,16,22,.65);
+      padding:12px;
+      margin-bottom:12px;
+    }
+    .card h3{
+      margin:0 0 10px 0;
+      font-size:14px;
+      font-weight:900;
+    }
+    .grid{
+      display:grid;
+      grid-template-columns: 1fr auto;
+      gap:10px;
+      align-items:center;
+    }
+    input[type="text"]{
+      width:100%;
+      min-height:44px;
+      padding:10px 12px;
+      border-radius:12px;
+      border:1px solid var(--border);
+      background: rgba(255,255,255,.05);
+      color:var(--text);
+      outline:none;
+    }
+    input[type="text"]::placeholder{ color: rgba(255,255,255,.35); }
+
+    /* File button label – must be physically clickable on mobile */
+    .file-btn{
+      position:relative;
+      display:inline-flex;
+      align-items:center;
+      justify-content:center;
+      gap:8px;
+      min-height:44px;
+      padding:10px 12px;
+      border-radius:12px;
+      border:1px solid var(--border);
+      background: rgba(255,255,255,.06);
+      color:var(--text);
+      font-weight:800;
+      cursor:pointer;
+      white-space:nowrap;
+    }
+    .file-btn input[type="file"]{
+      position:absolute;
+      inset:0;
+      opacity:0;
+      cursor:pointer;
+    }
+
+    .toolbar{
+      display:flex;
+      flex-wrap:wrap;
+      gap:8px;
+      align-items:center;
+    }
+
+    /* Gallery */
+    .photos{
+      display:grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap:10px;
+    }
+    @media (min-width: 760px){
+      .photos{ grid-template-columns: repeat(4, minmax(0, 1fr)); }
+    }
+    .ph{
+      border:1px solid var(--border);
+      border-radius: 14px;
+      overflow:hidden;
+      background: rgba(255,255,255,.03);
+      position:relative;
+      aspect-ratio: 1 / 1;
+    }
+    .ph img{
+      width:100%;
+      height:100%;
+      object-fit:cover;
+      display:block;
+    }
+    .ph .x{
+      position:absolute;
+      top:8px;
+      right:8px;
+      border-radius:999px;
+      min-height:34px;
+      padding:6px 10px;
+      background: rgba(0,0,0,.45);
+      border:1px solid rgba(255,255,255,.18);
+      font-weight:900;
+    }
+
+    /* Landing */
+    .landing{
+      display:flex;
+      flex-direction:column;
+      gap:12px;
+      align-items:flex-start;
+      padding:16px;
+    }
+    .landing .hero{
+      font-size:18px;
+      font-weight:950;
+      letter-spacing:.2px;
+    }
+    .landing .p{ color:var(--muted); }
+    .credit{
+      margin-top:10px;
+      font-size:12px;
+      color: rgba(255,255,255,.55);
+    }
+
+    /* Mobile: same flow, sidebar collapsible */
+    @media (max-width: 900px){
+      .shell{ flex-direction:column; }
+      .sidebar{ width:100%; max-width:none; }
+      .sidebar.collapsed .list{ display:none; }
+    }
+
+    /* Confirm modal */
+    .confirm-overlay[hidden]{ display:none; }
+    .confirm-overlay{
+      position:fixed;
+      inset:0;
+      display:flex;
+      align-items:center;
+      justify-content:center;
+      padding:16px;
+      background: rgba(0,0,0,.45);
+      z-index:9999;
+    }
+    .confirm-modal{
+      width:min(520px, 100%);
+      border-radius: 16px;
+      background: var(--panel);
+      color: var(--text);
+      box-shadow: var(--shadow);
+      padding:16px;
+      border:1px solid var(--border);
+    }
+    .confirm-title{ font-size:16px; font-weight:950; margin-bottom:8px; }
+    .confirm-text{ color: rgba(255,255,255,.85); margin-bottom:14px; }
+    .confirm-actions{ display:flex; gap:10px; justify-content:flex-end; }
+  </style>
 </head>
 
 <body>
 <div class="app">
   <div class="topbar">
-    <div class="brand">Work App</div>
+    <div class="brand">
+      <div class="title">Work App</div>
+      <div class="chip" id="chipStatus">Offline • Lokálně</div>
+    </div>
+    <div class="top-actions">
+      <button class="secondary" id="btnToggleSidebar" title="Projekty">☰</button>
+      <button class="ok" id="btnExport" title="Export projektu">⬇︎ Export</button>
+    </div>
   </div>
 
   <div class="shell">
     <aside class="sidebar" id="sidebar">
-      <div class="hdr" id="toggleProjects">Projekty</div>
+      <div class="hdr">
+        <div class="h">Projekty</div>
+        <button class="mini" id="btnNewProject">＋</button>
+      </div>
       <div class="list" id="tree"></div>
     </aside>
 
     <main class="content">
       <div class="hdr">
-        <div id="viewTitle">Vítej</div>
-        <div id="viewActions"></div>
+        <div class="left">
+          <div class="title" id="viewTitle">Vítej</div>
+          <div class="sub" id="viewSub">Vyber nebo vytvoř projekt</div>
+        </div>
+        <div class="toolbar" id="viewActions"></div>
       </div>
       <div class="body" id="viewBody"></div>
     </main>
   </div>
 </div>
 
-<!-- CONFIRM -->
-<div id="confirm">
-  <div class="box">
-    <div id="confirmText"></div><br>
-    <button id="confirmOk">OK</button>
-    <button id="confirmCancel">Zrušit</button>
+<!-- Confirm modal -->
+<div id="confirmOverlay" class="confirm-overlay" hidden>
+  <div class="confirm-modal" role="dialog" aria-modal="true" aria-labelledby="confirmTitle">
+    <div class="confirm-title" id="confirmTitle">Potvrzení</div>
+    <div class="confirm-text" id="confirmText">Opravdu?</div>
+    <div class="confirm-actions">
+      <button id="confirmCancel" type="button" class="secondary">Zrušit</button>
+      <button id="confirmOk" type="button" class="danger">Smazat</button>
+    </div>
   </div>
 </div>
 
 <script>
-/* =====================
-   SIMPLE CONFIRM
-===================== */
-function confirmBox(text){
-  return new Promise(res=>{
-    const c=document.getElementById("confirm");
-    document.getElementById("confirmText").textContent=text;
-    c.style.display="flex";
-    confirmOk.onclick=()=>{c.style.display="none";res(true)};
-    confirmCancel.onclick=()=>{c.style.display="none";res(false)};
-  });
+/* =========================
+   Helpers
+========================= */
+const $ = (sel, el=document) => el.querySelector(sel);
+const $$ = (sel, el=document) => Array.from(el.querySelectorAll(sel));
+
+function nowISO(){ return new Date().toISOString(); }
+function isMobile(){ return window.matchMedia("(max-width: 900px)").matches; }
+
+function sanitizeName(name){
+  // safe for zip paths
+  return (name || "Bez názvu")
+    .trim()
+    .replace(/[\\/:*?"<>|]/g, "_")
+    .replace(/\s+/g, " ")
+    .slice(0, 80) || "Bez názvu";
 }
 
-/* =====================
-   DB (IndexedDB)
-===================== */
-const DB="work_app";
-function openDB(){
-  return new Promise(r=>{
-    const req=indexedDB.open(DB,1);
-    req.onupgradeneeded=e=>{
-      const db=e.target.result;
-      db.createObjectStore("projects",{keyPath:"id"});
-      db.createObjectStore("folders",{keyPath:"id"});
-      db.createObjectStore("photos",{keyPath:"id"});
+async function confirmPopup({ title="Potvrzení", text="Opravdu?", okText="OK", cancelText="Zrušit" } = {}){
+  const overlay = $("#confirmOverlay");
+  const titleEl = $("#confirmTitle");
+  const textEl = $("#confirmText");
+  const okBtn = $("#confirmOk");
+  const cancelBtn = $("#confirmCancel");
+
+  titleEl.textContent = title;
+  textEl.textContent = text;
+  okBtn.textContent = okText;
+  cancelBtn.textContent = cancelText;
+
+  overlay.hidden = false;
+
+  return new Promise((resolve) => {
+    const cleanup = () => {
+      overlay.hidden = true;
+      okBtn.removeEventListener("click", onOk);
+      cancelBtn.removeEventListener("click", onCancel);
+      overlay.removeEventListener("click", onOverlay);
+      document.removeEventListener("keydown", onKey);
     };
-    req.onsuccess=()=>r(req.result);
+    const onOk = () => { cleanup(); resolve(true); };
+    const onCancel = () => { cleanup(); resolve(false); };
+    const onOverlay = (e) => { if (e.target === overlay) onCancel(); };
+    const onKey = (e) => { if (e.key === "Escape") onCancel(); };
+
+    okBtn.addEventListener("click", onOk);
+    cancelBtn.addEventListener("click", onCancel);
+    overlay.addEventListener("click", onOverlay);
+    document.addEventListener("keydown", onKey);
+
+    cancelBtn.focus();
   });
 }
-async function dbAll(store){
-  const db=await openDB();
-  return new Promise(r=>{
-    const tx=db.transaction(store);
-    tx.objectStore(store).getAll().onsuccess=e=>r(e.target.result);
+
+function downloadBlob(blob, filename){
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = filename;
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+  setTimeout(() => URL.revokeObjectURL(url), 1000);
+}
+
+/* =========================
+   IndexedDB
+========================= */
+const DB_NAME = "work_app_db";
+const DB_VER = 1;
+
+function idbOpen(){
+  return new Promise((resolve, reject) => {
+    const req = indexedDB.open(DB_NAME, DB_VER);
+    req.onupgradeneeded = () => {
+      const db = req.result;
+      if (!db.objectStoreNames.contains("projects")){
+        const s = db.createObjectStore("projects", { keyPath: "id" });
+        s.createIndex("createdAt", "createdAt");
+      }
+      if (!db.objectStoreNames.contains("folders")){
+        const s = db.createObjectStore("folders", { keyPath: "id" });
+        s.createIndex("projectId", "projectId");
+        s.createIndex("createdAt", "createdAt");
+      }
+      if (!db.objectStoreNames.contains("photos")){
+        const s = db.createObjectStore("photos", { keyPath: "id" });
+        s.createIndex("projectId", "projectId");
+        s.createIndex("folderId", "folderId");
+        s.createIndex("createdAt", "createdAt");
+      }
+    };
+    req.onsuccess = () => resolve(req.result);
+    req.onerror = () => reject(req.error);
   });
 }
-async function dbPut(store,obj){
-  const db=await openDB();
-  const tx=db.transaction(store,"readwrite");
-  tx.objectStore(store).put(obj);
-}
-async function dbDel(store,id){
-  const db=await openDB();
-  const tx=db.transaction(store,"readwrite");
-  tx.objectStore(store).delete(id);
-}
 
-/* =====================
-   STATE
-===================== */
-let projects=[],folders=[],photos=[];
-let selProject=null,selFolder=null;
-const uid=()=>crypto.randomUUID();
-
-/* =====================
-   RENDER
-===================== */
-async function refresh(){
-  projects=await dbAll("projects");
-  folders=await dbAll("folders");
-  photos=await dbAll("photos");
-  render();
+async function idbTx(storeNames, mode, fn){
+  const db = await idbOpen();
+  return new Promise((resolve, reject) => {
+    const tx = db.transaction(storeNames, mode);
+    const stores = Array.isArray(storeNames) ? storeNames.map(n => tx.objectStore(n)) : [tx.objectStore(storeNames)];
+    let result;
+    tx.oncomplete = () => resolve(result);
+    tx.onerror = () => reject(tx.error);
+    tx.onabort = () => reject(tx.error);
+    Promise.resolve(fn(stores, tx))
+      .then(r => result = r)
+      .catch(err => { try{ tx.abort(); }catch(_){} reject(err); });
+  });
 }
 
-function render(){
-  renderTree();
-  if(!projects.length) return renderLanding();
-  if(selFolder) return renderFolder();
-  renderProject();
-}
-
-function renderTree(){
-  tree.innerHTML="";
-  projects.forEach(p=>{
-    const r=document.createElement("div");
-    r.className="row";
-    r.innerHTML=`<div class="l"><span class="emoji">🏠</span>${p.name}</div>`;
-    r.onclick=()=>{selProject=p.id;selFolder=null;render()};
-    tree.appendChild(r);
-
-    folders.filter(f=>f.projectId===p.id).forEach(f=>{
-      const fr=document.createElement("div");
-      fr.className="row";
-      fr.style.marginLeft="14px";
-      fr.innerHTML=`<div class="l"><span class="emoji">📁</span>${f.name}</div>
-      <button onclick="renameFolder('${f.id}');event.stopPropagation()">✏️</button>`;
-      fr.onclick=()=>{selProject=p.id;selFolder=f.id;render()};
-      tree.appendChild(fr);
+async function idbGetAll(storeName, indexName=null, key=null){
+  return idbTx(storeName, "readonly", async ([s]) => {
+    return new Promise((resolve, reject) => {
+      let req;
+      if (indexName){
+        req = s.index(indexName).getAll(key);
+      } else {
+        req = s.getAll();
+      }
+      req.onsuccess = () => resolve(req.result || []);
+      req.onerror = () => reject(req.error);
     });
   });
 }
 
-function renderLanding(){
-  viewTitle.textContent="Vítej";
-  viewBody.innerHTML=`
-    <div class="card">
-      <input id="pname" placeholder="Název projektu">
-      <button onclick="addProject()">Vytvořit projekt</button>
-    </div>
-    <div style="opacity:.6">Vytvořil Jakub Haas</div>
-  `;
+async function idbGet(storeName, id){
+  return idbTx(storeName, "readonly", async ([s]) => {
+    return new Promise((resolve, reject) => {
+      const req = s.get(id);
+      req.onsuccess = () => resolve(req.result || null);
+      req.onerror = () => reject(req.error);
+    });
+  });
 }
 
-function renderProject(){
-  const p=projects.find(x=>x.id===selProject);
-  viewTitle.textContent="🏠 "+p.name;
-  viewBody.innerHTML=`
-    <div class="card">
-      <input id="fname" placeholder="Název složky">
-      <button onclick="addFolder()">Vytvořit složku</button>
-    </div>
-  `;
+async function idbPut(storeName, obj){
+  return idbTx(storeName, "readwrite", async ([s]) => {
+    return new Promise((resolve, reject) => {
+      const req = s.put(obj);
+      req.onsuccess = () => resolve(req.result);
+      req.onerror = () => reject(req.error);
+    });
+  });
 }
 
-function renderFolder(){
-  const f=folders.find(x=>x.id===selFolder);
-  viewTitle.textContent="📁 "+f.name;
-  viewBody.innerHTML=`
-    <div class="card">
-      <label class="file-btn">
-        📷 Foto
-        <input type="file" accept="image/*" capture="environment" onchange="addPhotos(event)">
-      </label>
-      <label class="file-btn">
-        🖼️ Galerie
-        <input type="file" accept="image/*" multiple onchange="addPhotos(event)">
-      </label>
-    </div>
-  `;
+async function idbDel(storeName, id){
+  return idbTx(storeName, "readwrite", async ([s]) => {
+    return new Promise((resolve, reject) => {
+      const req = s.delete(id);
+      req.onsuccess = () => resolve(true);
+      req.onerror = () => reject(req.error);
+    });
+  });
 }
 
-/* =====================
-   ACTIONS
-===================== */
-async function addProject(){
-  const n=pname.value.trim();
-  if(!n)return;
-  const p={id:uid(),name:n};
-  await dbPut("projects",p);
-  selProject=p.id;
-  refresh();
-}
-
-async function addFolder(){
-  const n=fname.value.trim();
-  if(!n)return;
-  await dbPut("folders",{id:uid(),projectId:selProject,name:n});
-  fname.value="";
-  refresh();
-}
-
-async function renameFolder(id){
-  const f=folders.find(x=>x.id===id);
-  const n=prompt("Nový název",f.name);
-  if(n){f.name=n;await dbPut("folders",f);refresh();}
-}
-
-async function addPhotos(e){
-  for(const file of e.target.files){
-    await dbPut("photos",{id:uid(),folderId:selFolder,blob:file});
-  }
-  alert("Fotky uloženy");
-}
-
-/* =====================
-   INIT
-===================== */
-toggleProjects.onclick=()=>{
-  if(window.innerWidth<900) sidebar.classList.toggle("collapsed");
+/* =========================
+   State
+========================= */
+const state = {
+  projects: [],
+  folders: [],
+  photos: [],
+  selectedProjectId: null,
+  selectedFolderId: null,
 };
-refresh();
+
+function uid(){
+  return (crypto && crypto.randomUUID) ? crypto.randomUUID() : (Date.now()+"_"+Math.random().toString(16).slice(2));
+}
+
+/* =========================
+   UI: render tree
+========================= */
+function renderTree(){
+  const el = $("#tree");
+  el.innerHTML = "";
+
+  if (!state.projects.length){
+    el.innerHTML = `<div style="padding:10px;color:var(--muted)">Žádné projekty</div>`;
+    return;
+  }
+
+  for (const p of state.projects){
+    const pRow = document.createElement("div");
+    pRow.className = "row" + (p.id === state.selectedProjectId && !state.selectedFolderId ? " active" : "");
+    pRow.innerHTML = `
+      <div class="l">
+        <span class="emoji">🏠</span>
+        <div class="name">${escapeHtml(p.name)}</div>
+      </div>
+      <button class="mini danger" title="Smazat projekt">🗑️</button>
+    `;
+    pRow.addEventListener("click", () => {
+      selectProject(p.id);
+      if (isMobile()) $("#sidebar").classList.add("collapsed");
+    });
+    pRow.querySelector("button").addEventListener("click", async (e) => {
+      e.stopPropagation();
+      await uiDeleteProject(p.id);
+    });
+    el.appendChild(pRow);
+
+    const folders = state.folders.filter(f => f.projectId === p.id);
+    for (const f of folders){
+      const fRow = document.createElement("div");
+      fRow.className = "row" + (f.id === state.selectedFolderId ? " active" : "");
+      fRow.style.marginLeft = "14px";
+      fRow.innerHTML = `
+        <div class="l">
+          <span class="emoji">📁</span>
+          <div class="name">${escapeHtml(f.name)}</div>
+        </div>
+        <button class="mini danger" title="Smazat složku">🗑️</button>
+      `;
+      fRow.addEventListener("click", () => {
+        selectFolder(f.id);
+        if (isMobile()) $("#sidebar").classList.add("collapsed");
+      });
+      fRow.querySelector("button").addEventListener("click", async (e) => {
+        e.stopPropagation();
+        await uiDeleteFolder(f.id);
+      });
+      el.appendChild(fRow);
+    }
+  }
+}
+
+/* =========================
+   UI: main view
+========================= */
+function setHeader(title, sub){
+  $("#viewTitle").textContent = title;
+  $("#viewSub").textContent = sub || "";
+}
+
+function setActions(nodes){
+  const a = $("#viewActions");
+  a.innerHTML = "";
+  for (const n of (nodes || [])) a.appendChild(n);
+}
+
+function renderLanding(){
+  setHeader("Vítej", "Vytvoř projekt a začni");
+  const body = $("#viewBody");
+  body.innerHTML = `
+    <div class="landing">
+      <div class="hero">Začni vytvořením projektu</div>
+      <div class="p">Vše se ukládá lokálně v prohlížeči (IndexedDB). Export ti stáhne ZIP s celou strukturou.</div>
+      <div class="card" style="width:100%">
+        <h3>Nový projekt</h3>
+        <div class="grid">
+          <input id="inpProjectName" type="text" placeholder="Název projektu…" />
+          <button class="ok" id="btnCreateProject">Vytvořit</button>
+        </div>
+      </div>
+      <div class="credit">Vytvořil Jakub Haas</div>
+    </div>
+  `;
+  setActions([]);
+  $("#btnCreateProject").addEventListener("click", async () => {
+    const name = ($("#inpProjectName").value || "").trim();
+    await createProject(name || "Nový projekt");
+  });
+}
+
+function renderProjectView(project){
+  setHeader(`🏠 ${project.name}`, "Projekt");
+  const body = $("#viewBody");
+  body.innerHTML = `
+    <div class="card">
+      <h3>Nová složka</h3>
+      <div class="grid">
+        <input id="inpFolderName" type="text" placeholder="Název složky…" />
+        <button class="ok" id="btnCreateFolder">Vytvořit</button>
+      </div>
+    </div>
+
+    <div class="card">
+      <h3>Složky</h3>
+      <div id="folderList"></div>
+    </div>
+  `;
+
+  const folders = state.folders.filter(f => f.projectId === project.id);
+  const list = $("#folderList");
+  if (!folders.length){
+    list.innerHTML = `<div style="color:var(--muted)">Zatím žádné složky.</div>`;
+  } else {
+    list.innerHTML = "";
+    for (const f of folders){
+      const count = state.photos.filter(ph => ph.folderId === f.id).length;
+      const row = document.createElement("div");
+      row.className = "row";
+      row.innerHTML = `
+        <div class="l">
+          <span class="emoji">📁</span>
+          <div class="name">${escapeHtml(f.name)}</div>
+        </div>
+        <div class="meta">${count} fotek</div>
+      `;
+      row.addEventListener("click", () => selectFolder(f.id));
+      list.appendChild(row);
+    }
+  }
+
+  $("#btnCreateFolder").addEventListener("click", async () => {
+    const name = ($("#inpFolderName").value || "").trim();
+    await createFolder(project.id, name || "Nová složka");
+  });
+
+  // Actions: delete project
+  const delBtn = document.createElement("button");
+  delBtn.className = "danger";
+  delBtn.textContent = "🗑️ Smazat projekt";
+  delBtn.addEventListener("click", () => uiDeleteProject(project.id));
+
+  setActions([delBtn]);
+}
+
+function renderFolderView(folder){
+  const project = state.projects.find(p => p.id === folder.projectId);
+  setHeader(`📁 ${folder.name}`, project ? `Projekt: 🏠 ${project.name}` : "Složka");
+  const body = $("#viewBody");
+
+  body.innerHTML = `
+    <div class="card">
+      <h3>Přidat fotky</h3>
+      <div class="toolbar">
+        <label class="file-btn" title="Vybrat nebo vyfotit">
+          📷 / 🖼️ Přidat
+          <input id="fileInput"
+                 type="file"
+                 accept="image/*"
+                 capture="environment"
+                 multiple />
+        </label>
+        <div style="color:var(--muted);font-size:12px">
+          Na mobilu se nabídne i fotoaparát.
+        </div>
+      </div>
+    </div>
+
+    <div class="card">
+      <h3>Fotky</h3>
+      <div id="photos" class="photos"></div>
+    </div>
+  `;
+
+  const fileInput = $("#fileInput");
+  fileInput.addEventListener("change", async (e) => {
+    const files = Array.from(e.target.files || []);
+    if (!files.length) return;
+    await addPhotosToFolder(folder.id, files);
+    // reset input so same file can be re-selected
+    fileInput.value = "";
+  });
+
+  renderPhotos(folder.id);
+
+  const delFolderBtn = document.createElement("button");
+  delFolderBtn.className = "danger";
+  delFolderBtn.textContent = "🗑️ Smazat složku";
+  delFolderBtn.addEventListener("click", () => uiDeleteFolder(folder.id));
+
+  setActions([delFolderBtn]);
+}
+
+function renderPhotos(folderId){
+  const wrap = $("#photos");
+  const photos = state.photos.filter(p => p.folderId === folderId).sort((a,b)=> (a.createdAt||"").localeCompare(b.createdAt||""));
+
+  if (!photos.length){
+    wrap.innerHTML = `<div style="color:var(--muted)">Zatím žádné fotky.</div>`;
+    return;
+  }
+
+  wrap.innerHTML = "";
+  for (const ph of photos){
+    const card = document.createElement("div");
+    card.className = "ph";
+    const img = document.createElement("img");
+    const url = URL.createObjectURL(ph.blob);
+    img.src = url;
+    img.alt = ph.filename || "foto";
+    img.onload = () => URL.revokeObjectURL(url);
+
+    const del = document.createElement("button");
+    del.className = "x";
+    del.textContent = "✕";
+    del.title = "Smazat fotku";
+    del.addEventListener("click", async () => {
+      const ok = await confirmPopup({
+        title: "Smazat fotku",
+        text: `Opravdu chceš smazat „${ph.filename}“?`,
+        okText: "Smazat",
+        cancelText: "Zrušit"
+      });
+      if (!ok) return;
+      await deletePhoto(ph.id);
+    });
+
+    card.appendChild(img);
+    card.appendChild(del);
+    wrap.appendChild(card);
+  }
+}
+
+/* =========================
+   Actions: select
+========================= */
+function selectProject(projectId){
+  state.selectedProjectId = projectId;
+  state.selectedFolderId = null;
+  const p = state.projects.find(x => x.id === projectId);
+  if (!p) return;
+  renderTree();
+  renderProjectView(p);
+}
+
+function selectFolder(folderId){
+  const f = state.folders.find(x => x.id === folderId);
+  if (!f) return;
+  state.selectedProjectId = f.projectId;
+  state.selectedFolderId = folderId;
+  renderTree();
+  renderFolderView(f);
+}
+
+/* =========================
+   CRUD: Projects, Folders, Photos
+========================= */
+async function refresh(){
+  state.projects = (await idbGetAll("projects")).sort((a,b)=> (a.createdAt||"").localeCompare(b.createdAt||""));
+  state.folders = (await idbGetAll("folders")).sort((a,b)=> (a.createdAt||"").localeCompare(b.createdAt||""));
+  state.photos  = (await idbGetAll("photos")).sort((a,b)=> (a.createdAt||"").localeCompare(b.createdAt||""));
+
+  // keep selection valid
+  if (state.selectedFolderId && !state.folders.find(f => f.id === state.selectedFolderId)){
+    state.selectedFolderId = null;
+  }
+  if (state.selectedProjectId && !state.projects.find(p => p.id === state.selectedProjectId)){
+    state.selectedProjectId = null;
+    state.selectedFolderId = null;
+  }
+
+  renderTree();
+
+  if (!state.projects.length){
+    renderLanding();
+    return;
+  }
+
+  if (state.selectedFolderId){
+    selectFolder(state.selectedFolderId);
+    return;
+  }
+
+  if (state.selectedProjectId){
+    selectProject(state.selectedProjectId);
+    return;
+  }
+
+  // default select first project
+  selectProject(state.projects[0].id);
+}
+
+async function createProject(name){
+  const p = { id: uid(), name: name.trim(), createdAt: nowISO() };
+  await idbPut("projects", p);
+  state.selectedProjectId = p.id;
+  state.selectedFolderId = null;
+  await refresh();
+  if (isMobile()) $("#sidebar").classList.add("collapsed");
+}
+
+async function createFolder(projectId, name){
+  const f = { id: uid(), projectId, name: name.trim(), createdAt: nowISO() };
+  await idbPut("folders", f);
+  state.selectedFolderId = f.id;
+  await refresh();
+}
+
+async function addPhotosToFolder(folderId, files){
+  const folder = state.folders.find(f => f.id === folderId);
+  if (!folder) return;
+  const projectId = folder.projectId;
+
+  for (const file of files){
+    // ensure it's image
+    if (!file.type.startsWith("image/")) continue;
+    const blob = file; // File is a Blob
+    const rec = {
+      id: uid(),
+      projectId,
+      folderId,
+      filename: file.name || `foto_${Date.now()}.jpg`,
+      type: file.type || "image/jpeg",
+      createdAt: nowISO(),
+      blob,
+    };
+    await idbPut("photos", rec);
+  }
+  await refresh();
+}
+
+async function deletePhoto(photoId){
+  await idbDel("photos", photoId);
+  await refresh();
+}
+
+async function uiDeleteFolder(folderId){
+  const folder = state.folders.find(f => f.id === folderId);
+  if (!folder) return;
+  const ok = await confirmPopup({
+    title: "Smazat složku",
+    text: `Opravdu chceš smazat složku „${folder.name}“ včetně všech fotek?`,
+    okText: "Smazat",
+    cancelText: "Zrušit"
+  });
+  if (!ok) return;
+
+  // delete photos in folder
+  const photos = state.photos.filter(p => p.folderId === folderId);
+  for (const ph of photos){
+    await idbDel("photos", ph.id);
+  }
+  await idbDel("folders", folderId);
+  state.selectedFolderId = null;
+  await refresh();
+}
+
+async function uiDeleteProject(projectId){
+  const project = state.projects.find(p => p.id === projectId);
+  if (!project) return;
+  const ok = await confirmPopup({
+    title: "Smazat projekt",
+    text: `Opravdu chceš smazat projekt „${project.name}“ včetně složek a všech fotek?`,
+    okText: "Smazat",
+    cancelText: "Zrušit"
+  });
+  if (!ok) return;
+
+  // delete all folders + photos for project
+  const folders = state.folders.filter(f => f.projectId === projectId);
+  const photos  = state.photos.filter(ph => ph.projectId === projectId);
+
+  for (const ph of photos) await idbDel("photos", ph.id);
+  for (const f of folders) await idbDel("folders", f.id);
+  await idbDel("projects", projectId);
+
+  state.selectedProjectId = null;
+  state.selectedFolderId = null;
+  await refresh();
+}
+
+/* =========================
+   ZIP export (no libraries)
+   - store method (no compression)
+   - supports UTF-8
+   - includes empty directories
+========================= */
+function u16(n){ return [n & 255, (n>>>8) & 255]; }
+function u32(n){ return [n & 255, (n>>>8)&255, (n>>>16)&255, (n>>>24)&255]; }
+
+const crcTable = (() => {
+  const table = new Uint32Array(256);
+  for (let i=0;i<256;i++){
+    let c = i;
+    for (let k=0;k<8;k++){
+      c = (c & 1) ? (0xEDB88320 ^ (c >>> 1)) : (c >>> 1);
+    }
+    table[i] = c >>> 0;
+  }
+  return table;
+})();
+
+function crc32(buf){
+  let c = 0xFFFFFFFF;
+  for (let i=0;i<buf.length;i++){
+    c = crcTable[(c ^ buf[i]) & 0xFF] ^ (c >>> 8);
+  }
+  return (c ^ 0xFFFFFFFF) >>> 0;
+}
+
+function utf8Bytes(str){
+  return new TextEncoder().encode(str);
+}
+
+function msDosTime(date){
+  // date: JS Date
+  const d = date;
+  const time =
+    ((d.getHours() & 0x1F) << 11) |
+    ((d.getMinutes() & 0x3F) << 5) |
+    ((Math.floor(d.getSeconds()/2) & 0x1F));
+  const dt =
+    (((d.getFullYear() - 1980) & 0x7F) << 9) |
+    (((d.getMonth()+1) & 0x0F) << 5) |
+    (d.getDate() & 0x1F);
+  return { time, dt };
+}
+
+async function exportSelectedProject(){
+  const pid = state.selectedProjectId;
+  const project = state.projects.find(p => p.id === pid);
+  if (!project){
+    alert("Vyber projekt.");
+    return;
+  }
+
+  const pName = sanitizeName(project.name);
+  const baseDir = `${pName}/`;
+
+  const folders = state.folders.filter(f => f.projectId === pid);
+  const photos = state.photos.filter(ph => ph.projectId === pid);
+
+  // entries: {name, data(Uint8Array), isDir, mtime}
+  const entries = [];
+
+  // Always include project root dir
+  entries.push({ name: baseDir, data: new Uint8Array(0), isDir:true, mtime: new Date() });
+
+  // Include all folder dirs (even empty)
+  for (const f of folders){
+    const fName = sanitizeName(f.name);
+    entries.push({ name: `${baseDir}${fName}/`, data: new Uint8Array(0), isDir:true, mtime: new Date() });
+  }
+
+  // Include photo files
+  for (const ph of photos){
+    const folder = folders.find(f => f.id === ph.folderId);
+    const folderName = folder ? sanitizeName(folder.name) : "Nezarazene";
+    const fileName = sanitizeName(ph.filename || "foto.jpg");
+    const path = `${baseDir}${folderName}/${fileName}`;
+
+    const arr = new Uint8Array(await ph.blob.arrayBuffer());
+    entries.push({ name: path, data: arr, isDir:false, mtime: new Date(ph.createdAt || Date.now()) });
+  }
+
+  // Build ZIP
+  const outParts = [];
+  const centralParts = [];
+  let offset = 0;
+
+  for (const e of entries){
+    const nameBytes = utf8Bytes(e.name);
+    const data = e.data || new Uint8Array(0);
+    const { time, dt } = msDosTime(e.mtime || new Date());
+    const crc = crc32(data);
+    const compSize = data.length;
+    const uncompSize = data.length;
+    const gpFlag = 0x0800; // UTF-8
+    const method = 0; // stored
+
+    // external attrs: directory bit for dirs
+    const extAttr = e.isDir ? 0x10 : 0x00;
+
+    // local file header
+    const local = [
+      ...u32(0x04034b50),
+      ...u16(20),               // version needed
+      ...u16(gpFlag),
+      ...u16(method),
+      ...u16(time),
+      ...u16(dt),
+      ...u32(crc),
+      ...u32(compSize),
+      ...u32(uncompSize),
+      ...u16(nameBytes.length),
+      ...u16(0),                // extra length
+    ];
+    const localBytes = new Uint8Array(local);
+    outParts.push(localBytes, nameBytes, data);
+
+    const localHeaderOffset = offset;
+    offset += localBytes.length + nameBytes.length + data.length;
+
+    // central directory header
+    const central = [
+      ...u32(0x02014b50),
+      ...u16(0x031E),           // version made by (3=Unix, 30=ver)
+      ...u16(20),               // version needed
+      ...u16(gpFlag),
+      ...u16(method),
+      ...u16(time),
+      ...u16(dt),
+      ...u32(crc),
+      ...u32(compSize),
+      ...u32(uncompSize),
+      ...u16(nameBytes.length),
+      ...u16(0),                // extra
+      ...u16(0),                // comment
+      ...u16(0),                // disk number
+      ...u16(0),                // internal attrs
+      ...u32(extAttr << 16),    // external attrs
+      ...u32(localHeaderOffset),
+    ];
+    const centralBytes = new Uint8Array(central);
+    centralParts.push(centralBytes, nameBytes);
+  }
+
+  const centralSize = centralParts.reduce((s, p) => s + p.length, 0);
+  const centralOffset = offset;
+
+  outParts.push(...centralParts);
+  offset += centralSize;
+
+  // end of central directory
+  const eocd = new Uint8Array([
+    ...u32(0x06054b50),
+    ...u16(0),                 // disk
+    ...u16(0),                 // central disk
+    ...u16(entries.length),
+    ...u16(entries.length),
+    ...u32(centralSize),
+    ...u32(centralOffset),
+    ...u16(0),                 // comment len
+  ]);
+  outParts.push(eocd);
+
+  const zipBlob = new Blob(outParts, { type: "application/zip" });
+  downloadBlob(zipBlob, `${pName}.zip`);
+}
+
+/* =========================
+   Escape HTML
+========================= */
+function escapeHtml(s){
+  return String(s || "")
+    .replaceAll("&","&amp;")
+    .replaceAll("<","&lt;")
+    .replaceAll(">","&gt;")
+    .replaceAll('"',"&quot;")
+    .replaceAll("'","&#039;");
+}
+
+/* =========================
+   Events
+========================= */
+$("#btnToggleSidebar").addEventListener("click", () => {
+  $("#sidebar").classList.toggle("collapsed");
+});
+
+$("#btnNewProject").addEventListener("click", async () => {
+  const name = prompt("Název projektu:");
+  if (!name) return;
+  await createProject(name);
+});
+
+$("#btnExport").addEventListener("click", async () => {
+  await exportSelectedProject();
+});
+
+/* =========================
+   Init
+========================= */
+(async function init(){
+  // little status
+  $("#chipStatus").textContent = "Offline • Lokálně (IndexedDB)";
+  await refresh();
+
+  // on rotation / resize keep layout stable
+  window.addEventListener("resize", () => {
+    // no-op; using 100dvh handles mobile address bar better
+  }, { passive:true });
+})();
 </script>
 </body>
 </html>
