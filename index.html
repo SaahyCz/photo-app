@@ -1338,47 +1338,29 @@ async function exportSelectedProject(){
     const uncompSize = data.length;
     const gpFlag = 0x0800;
     const method = 0;
-    const extAttr = e.isDir ? 0x10 : 0x00;
+ // DOS attribute flag for directories (Windows tohle chce)
+const extAttr = e.isDir ? 0x10 : 0x00;
 
-    const local = [
-      ...u32(0x04034b50),
-      ...u16(20),
-      ...u16(gpFlag),
-      ...u16(method),
-      ...u16(time),
-      ...u16(dt),
-      ...u32(crc),
-      ...u32(compSize),
-      ...u32(uncompSize),
-      ...u16(nameBytes.length),
-      ...u16(0),
-    ];
-    const localBytes = new Uint8Array(local);
-    outParts.push(localBytes, nameBytes, data);
+const central = [
+  ...u32(0x02014b50),
+  ...u16(0x0014),           // ✅ version made by = DOS (0) + version 20
+  ...u16(20),               // version needed
+  ...u16(gpFlag),
+  ...u16(method),
+  ...u16(time),
+  ...u16(dt),
+  ...u32(crc),
+  ...u32(compSize),
+  ...u32(uncompSize),
+  ...u16(nameBytes.length),
+  ...u16(0),                // extra
+  ...u16(0),                // comment
+  ...u16(0),                // disk number
+  ...u16(0),                // internal attrs
+  ...u32(extAttr),          // ✅ external attrs (NE shift <<16)
+  ...u32(localHeaderOffset),
+];
 
-    const localHeaderOffset = offset;
-    offset += localBytes.length + nameBytes.length + data.length;
-
-    const central = [
-      ...u32(0x02014b50),
-      ...u16(0x031E),
-      ...u16(20),
-      ...u16(gpFlag),
-      ...u16(method),
-      ...u16(time),
-      ...u16(dt),
-      ...u32(crc),
-      ...u32(compSize),
-      ...u32(uncompSize),
-      ...u16(nameBytes.length),
-      ...u16(0),
-      ...u16(0),
-      ...u16(0),
-      ...u16(0),
-      ...u16(0),
-      ...u32(extAttr << 16),
-      ...u32(localHeaderOffset),
-    ];
     const centralBytes = new Uint8Array(central);
     centralParts.push(centralBytes, nameBytes);
   }
