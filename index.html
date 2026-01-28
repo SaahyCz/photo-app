@@ -1270,33 +1270,40 @@ async function exportSelectedProject(){
     entries.push({ name: `${baseDir}${folderName}/${base}_meta.txt`, data: metaBytes, isDir:false, mtime: new Date(ph.createdAt || Date.now()) });
   }
 
+   // --- ZIP BUILD (Windows Explorer friendly) ---
   const outParts = [];
   const centralParts = [];
   let offset = 0;
 
   for (const e of entries){
+    // Windows chce složky vždy s trailing "/" (ty už máš) a nulová data (máš)
     const nameBytes = utf8Bytes(e.name);
     const data = e.data || new Uint8Array(0);
+
     const { time, dt } = msDosTime(e.mtime || new Date());
     const crc = crc32(data);
-    const compSize = data.length;
-    const uncompSize = data.length;
-    const gpFlag = 0x0800;
-    const method = 0;
+    const size = data.length;
+
+    const gpFlag = 0x0800; // UTF-8
+    const method = 0;      // stored
+
+    // ✅ DOS external attrs – Explorer friendly:
+    // dir: 0x10, file: 0x00
     const extAttr = e.isDir ? 0x10 : 0x00;
 
+    // Local file header
     const local = [
       ...u32(0x04034b50),
-      ...u16(20),
+      ...u16(20),           // version needed
       ...u16(gpFlag),
       ...u16(method),
       ...u16(time),
       ...u16(dt),
       ...u32(crc),
-      ...u32(compSize),
-      ...u32(uncompSize),
+      ...u32(size),         // comp size
+      ...u32(size),         // uncomp size
       ...u16(nameBytes.length),
-      ...u16(0),
+      ...u16(0),            // extra length
     ];
     const localBytes = new Uint8Array(local);
     outParts.push(localBytes, nameBytes, data);
@@ -1304,24 +1311,24 @@ async function exportSelectedProject(){
     const localHeaderOffset = offset;
     offset += localBytes.length + nameBytes.length + data.length;
 
+    // Central directory header
     const central = [
       ...u32(0x02014b50),
-      ...u16(0x031E),
-      ...u16(20),
+      ...u16(0x0014),       // ✅ version made by: DOS (0) + 20
+      ...u16(20),           // version needed
       ...u16(gpFlag),
       ...u16(method),
       ...u16(time),
       ...u16(dt),
       ...u32(crc),
-      ...u32(compSize),
-      ...u32(uncompSize),
+      ...u32(size),
+      ...u32(size),
       ...u16(nameBytes.length),
-      ...u16(0),
-      ...u16(0),
-      ...u16(0),
-      ...u16(0),
-      ...u16(0),
-      ...u32(extAttr << 16),
+      ...u16(0),            // extra
+      ...u16(0),            // comment
+      ...u16(0),            // disk number
+      ...u16(0),            // internal attrs
+      ...u32(extAttr),      // ✅ external attrs (DOS) – bez <<16
       ...u32(localHeaderOffset),
     ];
     const centralBytes = new Uint8Array(central);
@@ -1334,21 +1341,23 @@ async function exportSelectedProject(){
   outParts.push(...centralParts);
   offset += centralSize;
 
+  // End of central directory
   const eocd = new Uint8Array([
     ...u32(0x06054b50),
-    ...u16(0),
-    ...u16(0),
-    ...u16(entries.length),
-    ...u16(entries.length),
+    ...u16(0),                 // disk number
+    ...u16(0),                 // central dir disk
+    ...u16(entries.length),    // entries on this disk
+    ...u16(entries.length),    // total entries
     ...u32(centralSize),
     ...u32(centralOffset),
-    ...u16(0),
+    ...u16(0),                 // comment length
   ]);
   outParts.push(eocd);
 
   const zipBlob = new Blob(outParts, { type: "application/zip" });
   downloadBlob(zipBlob, `${pName}.zip`);
 }
+
 
 /* =========================
    Events
