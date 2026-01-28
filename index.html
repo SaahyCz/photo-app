@@ -1,181 +1,456 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="cs">
 <head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Projektový správce fotek</title>
-<script src="https://cdn.jsdelivr.net/npm/jszip@3.10.1/dist/jszip.min.js"></script>
+  <meta charset="utf-8" />
+  <meta name="viewport"
+        content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover" />
+  <meta name="color-scheme" content="dark light" />
+  <title>Work App</title>
+  <style>
+    :root{
+      --bg:#0b0c0f;
+      --panel:#11131a;
+      --panel2:#0f1016;
+      --text:#e9ecf1;
+      --muted:#a8b0bd;
+      --border:rgba(255,255,255,.08);
+      --danger:#ff4d4d;
+      --ok:#49d17a;
+      --shadow:0 10px 40px rgba(0,0,0,.45);
+      --radius:16px;
+      --radius2:12px;
+    }
 
-<style>
-  body { margin:0; font-family:system-ui; display:flex; height:100vh; background:#f4f6f8 }
-  #sidebar { width:320px; background:#111827; color:#fff; padding:14px; overflow:auto }
-  .project { font-weight:700; margin:12px 0 6px; cursor:pointer; padding:6px 8px; border-radius:10px; background:#1f2937 }
-  .project.active { outline:2px solid #2563eb }
-  .folder { margin-left:14px; cursor:pointer; color:#d1d5db; padding:6px 8px; border-radius:10px }
-  .folder:hover { background:#1f2937 }
-  .folder.active { background:#2563eb; color:#fff; font-weight:600 }
+    *{ box-sizing:border-box; -webkit-tap-highlight-color: transparent; }
+    html, body { height:100%; margin:0; }
+    body{
+      background:var(--bg);
+      color:var(--text);
+      font: 14px/1.35 system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif;
+      overflow:hidden; /* 🔒 fix screen */
+      overscroll-behavior: none;
+      touch-action: manipulation;
+    }
 
-  button { border:none; border-radius:10px; padding:8px 10px; cursor:pointer }
-  .primary { background:#2563eb; color:white }
-  .ghost { background:#1f2937; color:#fff }
-  .row { display:flex; gap:8px; align-items:center; flex-wrap:wrap }
+    .app{
+      height:100dvh;
+      display:flex;
+      flex-direction:column;
+      padding: env(safe-area-inset-top) 0 env(safe-area-inset-bottom) 0;
+    }
 
-  #content { flex:1; padding:18px; overflow:auto }
-  .card { background:white; border-radius:16px; padding:14px; margin-bottom:14px; box-shadow:0 1px 2px rgba(0,0,0,.05) }
+    /* Header (fixed area) */
+    .topbar{
+      flex:0 0 auto;
+      display:flex;
+      align-items:center;
+      justify-content:space-between;
+      gap:12px;
+      padding:12px 14px;
+      border-bottom:1px solid var(--border);
+      background: linear-gradient(180deg, rgba(17,19,26,0.95), rgba(17,19,26,0.72));
+      backdrop-filter: blur(10px);
+    }
+    .brand{
+      display:flex;
+      align-items:center;
+      gap:10px;
+      min-width:0;
+    }
+    .brand .title{
+      font-weight:800;
+      letter-spacing:.2px;
+      white-space:nowrap;
+      overflow:hidden;
+      text-overflow:ellipsis;
+      max-width:56vw;
+    }
+    .chip{
+      font-size:12px;
+      color:var(--muted);
+      border:1px solid var(--border);
+      padding:4px 8px;
+      border-radius:999px;
+      white-space:nowrap;
+    }
+    .top-actions{
+      display:flex;
+      gap:8px;
+      align-items:center;
+    }
 
-  .images { display:flex; flex-wrap:wrap; gap:10px }
-  .image-box { width:140px; background:#f3f4f6; padding:8px; border-radius:12px }
-  .image-box img { width:100%; border-radius:10px; display:block; margin-top:6px }
-  .image-box input { width:100%; box-sizing:border-box; border:1px solid #e5e7eb; border-radius:10px; padding:6px 8px }
+    button{
+      appearance:none;
+      border:1px solid var(--border);
+      background: rgba(255,255,255,.06);
+      color:var(--text);
+      border-radius:12px;
+      padding:10px 12px;
+      min-height:44px; /* mobile-friendly */
+      font-weight:650;
+      cursor:pointer;
+    }
+    button:active{ transform: translateY(1px); }
+    button.secondary{ background:transparent; }
+    button.danger{ border-color: rgba(255,77,77,.35); background: rgba(255,77,77,.12); }
+    button.ok{ border-color: rgba(73,209,122,.35); background: rgba(73,209,122,.12); }
 
-  .chat { border:1px solid #e5e7eb; border-radius:14px; padding:10px; max-height:240px; overflow:auto; background:#fafafa }
-  .msg { margin:0 0 10px; }
-  .bubble { display:inline-block; padding:8px 10px; border-radius:14px; background:#e5e7eb }
-  .meta { color:#6b7280; font-size:12px; margin-top:4px }
+    /* Layout */
+    .shell{
+      flex:1 1 auto;
+      min-height:0;
+      display:flex;
+      gap:12px;
+      padding:12px;
+    }
+    .sidebar{
+      width:320px;
+      min-width:260px;
+      max-width:380px;
+      border:1px solid var(--border);
+      border-radius: var(--radius);
+      background: rgba(17,19,26,.82);
+      box-shadow: var(--shadow);
+      overflow:hidden;
+      display:flex;
+      flex-direction:column;
+    }
+    .sidebar .hdr{
+      flex:0 0 auto;
+      padding:12px 12px 10px;
+      border-bottom:1px solid var(--border);
+      display:flex;
+      align-items:center;
+      justify-content:space-between;
+      gap:8px;
+    }
+    .sidebar .hdr .h{
+      font-weight:800;
+      letter-spacing:.2px;
+    }
+    .sidebar .list{
+      flex:1 1 auto;
+      min-height:0;
+      overflow:auto; /* only inner scroll in sidebar */
+      -webkit-overflow-scrolling: touch;
+      padding:8px;
+    }
 
-  textarea, input[type="text"] { width:100%; box-sizing:border-box; border:1px solid #e5e7eb; border-radius:12px; padding:10px; }
-  textarea { min-height:80px; resize:vertical }
+    .content{
+      flex:1 1 auto;
+      min-width:0;
+      border:1px solid var(--border);
+      border-radius: var(--radius);
+      background: rgba(17,19,26,.55);
+      box-shadow: var(--shadow);
+      overflow:hidden;
+      display:flex;
+      flex-direction:column;
+    }
+    .content .hdr{
+      flex:0 0 auto;
+      padding:12px;
+      border-bottom:1px solid var(--border);
+      display:flex;
+      align-items:center;
+      justify-content:space-between;
+      gap:10px;
+      min-width:0;
+    }
+    .content .hdr .left{
+      min-width:0;
+    }
+    .content .hdr .title{
+      font-size:16px;
+      font-weight:850;
+      white-space:nowrap;
+      overflow:hidden;
+      text-overflow:ellipsis;
+      max-width:60vw;
+    }
+    .content .hdr .sub{
+      margin-top:2px;
+      color:var(--muted);
+      font-size:12px;
+    }
+    .content .body{
+      flex:1 1 auto;
+      min-height:0;
+      overflow:auto; /* ✅ single main scroll */
+      -webkit-overflow-scrolling: touch;
+      padding:12px;
+    }
 
-  .hint { color:#6b7280; font-size:13px; margin-top:6px }
+    /* Tree items */
+    .row{
+      display:flex;
+      align-items:center;
+      justify-content:space-between;
+      gap:10px;
+      padding:10px 10px;
+      border-radius:12px;
+      border:1px solid transparent;
+      user-select:none;
+    }
+    .row:hover{ background: rgba(255,255,255,.04); }
+    .row.active{
+      background: rgba(255,255,255,.06);
+      border-color: rgba(255,255,255,.08);
+    }
+    .row .l{
+      display:flex;
+      align-items:center;
+      gap:10px;
+      min-width:0;
+    }
+    .emoji{
+      width:1.4em;
+      display:inline-block;
+      text-align:center;
+    }
+    .row .name{
+      font-weight:750;
+      min-width:0;
+      display:-webkit-box;
+      -webkit-line-clamp:2;
+      -webkit-box-orient:vertical;
+      overflow:hidden;
+    }
+    .row .meta{
+      color:var(--muted);
+      font-size:12px;
+      white-space:nowrap;
+    }
+    .mini{
+      padding:7px 10px;
+      min-height:36px;
+      border-radius:10px;
+      font-weight:750;
+    }
 
-  .toast {
-    position:fixed; bottom:18px; right:18px;
-    background:#111827; color:white; padding:10px 14px;
-    border-radius:12px; opacity:0; transition:.25s;
-    box-shadow:0 10px 30px rgba(0,0,0,.2);
-  }
-  .toast.show { opacity:1 }
+    /* Inline form */
+    .card{
+      border:1px solid var(--border);
+      border-radius: var(--radius);
+      background: rgba(15,16,22,.65);
+      padding:12px;
+      margin-bottom:12px;
+    }
+    .card h3{
+      margin:0 0 10px 0;
+      font-size:14px;
+      font-weight:900;
+    }
+    .grid{
+      display:grid;
+      grid-template-columns: 1fr auto;
+      gap:10px;
+      align-items:center;
+    }
+    input[type="text"]{
+      width:100%;
+      min-height:44px;
+      padding:10px 12px;
+      border-radius:12px;
+      border:1px solid var(--border);
+      background: rgba(255,255,255,.05);
+      color:var(--text);
+      outline:none;
+    }
+    input[type="text"]::placeholder{ color: rgba(255,255,255,.35); }
 
-  .tree-item { display:flex; align-items:center; justify-content:space-between; gap:8px; }
-  .tree-title { flex:1; min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
-  .iconbtn { background:transparent; color:#9ca3af; padding:6px 8px; border-radius:10px; }
-  .iconbtn:hover { background:#111827; color:#fff }
-  .project .iconbtn:hover { background:#111827; }
-  .folder .iconbtn:hover { background:#1f2937; }
+    /* File button label – must be physically clickable on mobile */
+    .file-btn{
+      position:relative;
+      display:inline-flex;
+      align-items:center;
+      justify-content:center;
+      gap:8px;
+      min-height:44px;
+      padding:10px 12px;
+      border-radius:12px;
+      border:1px solid var(--border);
+      background: rgba(255,255,255,.06);
+      color:var(--text);
+      font-weight:800;
+      cursor:pointer;
+      white-space:nowrap;
+    }
+    .file-btn input[type="file"]{
+      position:absolute;
+      inset:0;
+      opacity:0;
+      cursor:pointer;
+    }
 
-  /* Mobile: keep similar flow, sidebar on top, content below */
-  @media (max-width: 900px){
-    body { flex-direction:column; height:auto; min-height:100vh; }
-    #sidebar { width:100%; padding:12px; position:sticky; top:0; z-index:10; max-height:44vh; }
-    #tree { max-height: calc(44vh - 56px); overflow:auto; }
-    #content { padding:12px; }
-    .images { gap:8px; }
-    .image-box { width: calc(50% - 8px); }
-  }
-  @media (max-width: 420px){
-    .image-box { width: 100%; }
-  }
+    .toolbar{
+      display:flex;
+      flex-wrap:wrap;
+      gap:8px;
+      align-items:center;
+    }
 
+    /* Gallery */
+    .photos{
+      display:grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap:10px;
+    }
+    @media (min-width: 760px){
+      .photos{ grid-template-columns: repeat(4, minmax(0, 1fr)); }
+    }
+    .ph{
+      border:1px solid var(--border);
+      border-radius: 14px;
+      overflow:hidden;
+      background: rgba(255,255,255,.03);
+      position:relative;
+      aspect-ratio: 1 / 1;
+    }
+    .ph img{
+      width:100%;
+      height:100%;
+      object-fit:cover;
+      display:block;
+    }
+    .ph .x{
+      position:absolute;
+      top:8px;
+      right:8px;
+      border-radius:999px;
+      min-height:34px;
+      padding:6px 10px;
+      background: rgba(0,0,0,.45);
+      border:1px solid rgba(255,255,255,.18);
+      font-weight:900;
+    }
 
-  /* Confirm popup */
-  .confirm-overlay[hidden]{ display:none; }
-  .confirm-overlay{
-    position:fixed; inset:0; z-index:9999;
-    display:flex; align-items:center; justify-content:center;
-    padding:16px; background:rgba(0,0,0,.45);
-  }
-  .confirm-modal{
-    width:min(520px,100%);
-    background:#0b1220; color:#fff;
-    border:1px solid rgba(255,255,255,.08);
-    border-radius:16px;
-    box-shadow:0 10px 40px rgba(0,0,0,.45);
-    padding:16px;
-  }
-  .confirm-title{ font-size:16px; font-weight:800; margin-bottom:8px; }
-  .confirm-text{ font-size:14px; opacity:.9; line-height:1.35; margin-bottom:14px; }
-  .confirm-actions{ display:flex; gap:10px; justify-content:flex-end; }
-  .confirm-actions button{ min-height:44px; padding:10px 14px; border-radius:12px; }
-  .danger{ background:#ef4444; border:none; color:#fff; cursor:pointer; }
-  .danger:hover{ filter:brightness(.95); }
+    /* Landing */
+    .landing{
+      display:flex;
+      flex-direction:column;
+      gap:12px;
+      align-items:flex-start;
+      padding:16px;
+    }
+    .landing .hero{
+      font-size:18px;
+      font-weight:950;
+      letter-spacing:.2px;
+    }
+    .landing .p{ color:var(--muted); }
+    .credit{
+      margin-top:10px;
+      font-size:12px;
+      color: rgba(255,255,255,.55);
+    }
 
-</style>
+    /* Mobile: same flow, sidebar collapsible */
+    @media (max-width: 900px){
+      .shell{ flex-direction:column; }
+      .sidebar{ width:100%; max-width:none; }
+      .sidebar.collapsed .list{ display:none; }
+    }
+
+    /* Confirm modal */
+    .confirm-overlay[hidden]{ display:none; }
+    .confirm-overlay{
+      position:fixed;
+      inset:0;
+      display:flex;
+      align-items:center;
+      justify-content:center;
+      padding:16px;
+      background: rgba(0,0,0,.45);
+      z-index:9999;
+    }
+    .confirm-modal{
+      width:min(520px, 100%);
+      border-radius: 16px;
+      background: var(--panel);
+      color: var(--text);
+      box-shadow: var(--shadow);
+      padding:16px;
+      border:1px solid var(--border);
+    }
+    .confirm-title{ font-size:16px; font-weight:950; margin-bottom:8px; }
+    .confirm-text{ color: rgba(255,255,255,.85); margin-bottom:14px; }
+    .confirm-actions{ display:flex; gap:10px; justify-content:flex-end; }
+  </style>
 </head>
 
 <body>
-  <div id="sidebar">
-    <div class="row" style="margin-bottom:10px; justify-content:space-between">
-      <button class="primary" onclick="addProject()">➕ Nový projekt</button>
-      <button class="ghost" onclick="toggleTree()" style="display:none" id="toggleTreeBtn">☰ Projekty</button>
+<div class="app">
+  <div class="topbar">
+    <div class="brand">
+      <div class="title">Work App</div>
+      <div class="chip" id="chipStatus">Offline • Lokálně</div>
     </div>
-    <div id="tree"></div>
+    <div class="top-actions">
+      <button class="secondary" id="btnToggleSidebar" title="Projekty">☰</button>
+      <button class="ok" id="btnExport" title="Export projektu">⬇︎ Export</button>
+    </div>
   </div>
 
-  <div id="content">
-    <h2>Vyber projekt nebo složku</h2>
-    <div style="color:#6b7280;font-size:13px;margin-top:8px">Vytvořil Jakub Haas</div>
-  </div>
+  <div class="shell">
+    <aside class="sidebar" id="sidebar">
+      <div class="hdr">
+        <div class="h">Projekty</div>
+        <button class="mini" id="btnNewProject">＋</button>
+      </div>
+      <div class="list" id="tree"></div>
+    </aside>
 
-  <div class="toast" id="toast"></div>
+    <main class="content">
+      <div class="hdr">
+        <div class="left">
+          <div class="title" id="viewTitle">Vítej</div>
+          <div class="sub" id="viewSub">Vyber nebo vytvoř projekt</div>
+        </div>
+        <div class="toolbar" id="viewActions"></div>
+      </div>
+      <div class="body" id="viewBody"></div>
+    </main>
+  </div>
+</div>
+
+<!-- Confirm modal -->
+<div id="confirmOverlay" class="confirm-overlay" hidden>
+  <div class="confirm-modal" role="dialog" aria-modal="true" aria-labelledby="confirmTitle">
+    <div class="confirm-title" id="confirmTitle">Potvrzení</div>
+    <div class="confirm-text" id="confirmText">Opravdu?</div>
+    <div class="confirm-actions">
+      <button id="confirmCancel" type="button" class="secondary">Zrušit</button>
+      <button id="confirmOk" type="button" class="danger">Smazat</button>
+    </div>
+  </div>
+</div>
 
 <script>
+/* =========================
+   Helpers
+========================= */
+const $ = (sel, el=document) => el.querySelector(sel);
+const $$ = (sel, el=document) => Array.from(el.querySelectorAll(sel));
 
+function nowISO(){ return new Date().toISOString(); }
+function isMobile(){ return window.matchMedia("(max-width: 900px)").matches; }
 
-/** -----------------------------
- *  IndexedDB: ukládá Blob fotek bezpečně (bez rozbití JSONem)
- * ----------------------------- */
-const DB_NAME = "photo_manager_db";
-const DB_VER = 1;
-const STORE = "images"; // key: imageId, value: Blob
-
-function idbOpen() {
-  return new Promise((resolve, reject) => {
-    const req = indexedDB.open(DB_NAME, DB_VER);
-    req.onupgradeneeded = () => {
-      const db = req.result;
-      if (!db.objectStoreNames.contains(STORE)) db.createObjectStore(STORE);
-    };
-    req.onsuccess = () => resolve(req.result);
-    req.onerror = () => reject(req.error);
-  });
-}
-async function idbSet(key, blob) {
-  const db = await idbOpen();
-  return new Promise((resolve, reject) => {
-    const tx = db.transaction(STORE, "readwrite");
-    tx.objectStore(STORE).put(blob, key);
-    tx.oncomplete = () => resolve();
-    tx.onerror = () => reject(tx.error);
-  });
-}
-async function idbGet(key) {
-  const db = await idbOpen();
-  return new Promise((resolve, reject) => {
-    const tx = db.transaction(STORE, "readonly");
-    const req = tx.objectStore(STORE).get(key);
-    req.onsuccess = () => resolve(req.result || null);
-    req.onerror = () => reject(req.error);
-  });
-}
-async function idbDel(key) {
-  const db = await idbOpen();
-  return new Promise((resolve, reject) => {
-    const tx = db.transaction(STORE, "readwrite");
-    tx.objectStore(STORE).delete(key);
-    tx.oncomplete = () => resolve();
-    tx.onerror = () => reject(tx.error);
-  });
+function sanitizeName(name){
+  // safe for zip paths
+  return (name || "Bez názvu")
+    .trim()
+    .replace(/[\\/:*?"<>|]/g, "_")
+    .replace(/\s+/g, " ")
+    .slice(0, 80) || "Bez názvu";
 }
 
-/** -----------------------------
- *  App metadata (localStorage)
- * ----------------------------- */
-let db = { projects: {} };
-let currentProject = null;
-let currentFolder = null;
-
-function toast(msg){
-  const t=document.getElementById("toast");
-  t.textContent=msg; t.classList.add("show");
-  setTimeout(()=>t.classList.remove("show"),1800);
-}
-
-async function confirmPopup({ title = "Potvrzení", text = "Opravdu pokračovat?", okText = "OK", cancelText = "Zrušit" } = {}) {
-  const overlay = document.getElementById("confirmOverlay");
-  const titleEl = document.getElementById("confirmTitle");
-  const textEl = document.getElementById("confirmText");
-  const okBtn = document.getElementById("confirmOk");
-  const cancelBtn = document.getElementById("confirmCancel");
+async function confirmPopup({ title="Potvrzení", text="Opravdu?", okText="OK", cancelText="Zrušit" } = {}){
+  const overlay = $("#confirmOverlay");
+  const titleEl = $("#confirmTitle");
+  const textEl = $("#confirmText");
+  const okBtn = $("#confirmOk");
+  const cancelBtn = $("#confirmCancel");
 
   titleEl.textContent = title;
   textEl.textContent = text;
@@ -184,7 +459,7 @@ async function confirmPopup({ title = "Potvrzení", text = "Opravdu pokračovat?
 
   overlay.hidden = false;
 
-  return await new Promise((resolve) => {
+  return new Promise((resolve) => {
     const cleanup = () => {
       overlay.hidden = true;
       okBtn.removeEventListener("click", onOk);
@@ -192,7 +467,6 @@ async function confirmPopup({ title = "Potvrzení", text = "Opravdu pokračovat?
       overlay.removeEventListener("click", onOverlay);
       document.removeEventListener("keydown", onKey);
     };
-
     const onOk = () => { cleanup(); resolve(true); };
     const onCancel = () => { cleanup(); resolve(false); };
     const onOverlay = (e) => { if (e.target === overlay) onCancel(); };
@@ -207,558 +481,720 @@ async function confirmPopup({ title = "Potvrzení", text = "Opravdu pokračovat?
   });
 }
 
-
-function saveMeta(){ localStorage.setItem("photo_meta_v3", JSON.stringify(db)); }
-function loadMeta(){
-  const d = localStorage.getItem("photo_meta_v3");
-  if (d) db = JSON.parse(d);
-}
-loadMeta();
-
-function initResponsive(){
-  const btn = document.getElementById("toggleTreeBtn");
-  if (!btn) return;
-  const mq = window.matchMedia("(max-width: 900px)");
-  const apply = () => {
-    btn.style.display = mq.matches ? "inline-flex" : "none";
-    // On desktop always show tree
-    const tree = document.getElementById("tree");
-    if (tree && !mq.matches) tree.style.display = "block";
-    if (tree && mq.matches && !currentProject && !currentFolder) tree.style.display = "block";
-  };
-  mq.addEventListener?.("change", apply);
-  window.addEventListener("resize", apply);
-  apply();
+function downloadBlob(blob, filename){
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = filename;
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+  setTimeout(() => URL.revokeObjectURL(url), 1000);
 }
 
-/** Helpers */
-function nowStr(){ return new Date().toLocaleString(); }
-function safeName(s){
-  return (s || "")
-    .trim()
-    .replace(/[\\/:*?"<>|]+/g, "_")
-    .replace(/\s+/g, " ")
-    .slice(0, 120) || "soubor";
-}
-function ensurePng(name){
-  const n = safeName(name);
-  return n.toLowerCase().endsWith(".png") ? n : (n + ".png");
-}
-function escapeHtml(s){
-  return (s||"").replace(/[&<>"']/g, ch => ({
-    "&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#039;"
-  }[ch]));
-}
+/* =========================
+   IndexedDB
+========================= */
+const DB_NAME = "work_app_db";
+const DB_VER = 1;
 
-/** Sidebar tree */
-
-function renderTree(){
-  const t = document.getElementById("tree");
-  t.innerHTML = "";
-
-  const projects = Object.values(db.projects);
-  if (!projects.length){
-    t.innerHTML = `<div style="color:#9ca3af;font-size:13px">Zatím žádné projekty.</div>`;
-    return;
-  }
-
-  projects.forEach(p => {
-    const proj = document.createElement("div");
-    proj.className = "project" + (p.id === currentProject ? " active" : "");
-    proj.innerHTML = `
-      <div class="tree-item">
-        <div class="tree-title">🏠 ${escapeHtml(p.name)}</div>
-        <button class="iconbtn" title="Smazat projekt" aria-label="Smazat projekt">🗑️</button>
-      </div>
-    `;
-    proj.onclick = () => { openProject(p.id); collapseTreeOnMobile(); };
-
-    // delete project button
-    proj.querySelector("button").onclick = (e) => {
-      e.stopPropagation();
-      deleteProject(p.id);
+function idbOpen(){
+  return new Promise((resolve, reject) => {
+    const req = indexedDB.open(DB_NAME, DB_VER);
+    req.onupgradeneeded = () => {
+      const db = req.result;
+      if (!db.objectStoreNames.contains("projects")){
+        const s = db.createObjectStore("projects", { keyPath: "id" });
+        s.createIndex("createdAt", "createdAt");
+      }
+      if (!db.objectStoreNames.contains("folders")){
+        const s = db.createObjectStore("folders", { keyPath: "id" });
+        s.createIndex("projectId", "projectId");
+        s.createIndex("createdAt", "createdAt");
+      }
+      if (!db.objectStoreNames.contains("photos")){
+        const s = db.createObjectStore("photos", { keyPath: "id" });
+        s.createIndex("projectId", "projectId");
+        s.createIndex("folderId", "folderId");
+        s.createIndex("createdAt", "createdAt");
+      }
     };
+    req.onsuccess = () => resolve(req.result);
+    req.onerror = () => reject(req.error);
+  });
+}
 
-    t.appendChild(proj);
+async function idbTx(storeNames, mode, fn){
+  const db = await idbOpen();
+  return new Promise((resolve, reject) => {
+    const tx = db.transaction(storeNames, mode);
+    const stores = Array.isArray(storeNames) ? storeNames.map(n => tx.objectStore(n)) : [tx.objectStore(storeNames)];
+    let result;
+    tx.oncomplete = () => resolve(result);
+    tx.onerror = () => reject(tx.error);
+    tx.onabort = () => reject(tx.error);
+    Promise.resolve(fn(stores, tx))
+      .then(r => result = r)
+      .catch(err => { try{ tx.abort(); }catch(_){} reject(err); });
+  });
+}
 
-    Object.values(p.folders).forEach(f => {
-      const fd = document.createElement("div");
-      fd.className = "folder" + (currentFolder === f.id ? " active" : "");
-      fd.innerHTML = `
-        <div class="tree-item">
-          <div class="tree-title">📁 ${escapeHtml(f.name)}</div>
-          <button class="iconbtn" title="Smazat složku" aria-label="Smazat složku">🗑️</button>
-        </div>
-      `;
-      fd.onclick = (e) => { e.stopPropagation(); openFolder(p.id, f.id); collapseTreeOnMobile(); };
-
-      fd.querySelector("button").onclick = (e) => {
-        e.stopPropagation();
-        deleteFolder(p.id, f.id);
-      };
-
-      t.appendChild(fd);
+async function idbGetAll(storeName, indexName=null, key=null){
+  return idbTx(storeName, "readonly", async ([s]) => {
+    return new Promise((resolve, reject) => {
+      let req;
+      if (indexName){
+        req = s.index(indexName).getAll(key);
+      } else {
+        req = s.getAll();
+      }
+      req.onsuccess = () => resolve(req.result || []);
+      req.onerror = () => reject(req.error);
     });
   });
 }
 
-function collapseTreeOnMobile(){
-  // if toggle button is visible, we are on mobile layout
-  const btn = document.getElementById("toggleTreeBtn");
-  if (!btn) return;
-  const isMobile = getComputedStyle(btn).display !== "none";
-  if (!isMobile) return;
-
-  const tree = document.getElementById("tree");
-  if (tree) tree.style.display = "none";
+async function idbGet(storeName, id){
+  return idbTx(storeName, "readonly", async ([s]) => {
+    return new Promise((resolve, reject) => {
+      const req = s.get(id);
+      req.onsuccess = () => resolve(req.result || null);
+      req.onerror = () => reject(req.error);
+    });
+  });
 }
 
-function toggleTree(){
-  const tree = document.getElementById("tree");
-  if (!tree) return;
-  tree.style.display = (tree.style.display === "none") ? "block" : "none";
+async function idbPut(storeName, obj){
+  return idbTx(storeName, "readwrite", async ([s]) => {
+    return new Promise((resolve, reject) => {
+      const req = s.put(obj);
+      req.onsuccess = () => resolve(req.result);
+      req.onerror = () => reject(req.error);
+    });
+  });
 }
 
-/** Project */
-
-function addProject(){
-  const name = prompt("Název projektu:");
-  if(!name) return;
-  const id = Date.now().toString();
-  db.projects[id] = {
-    id,
-    name: safeName(name),
-    created: nowStr(),
-    technici: [],
-    folders: {},
-    images: {} // imageId -> {id, folderId, name, created}
-  };
-  saveMeta();
-  renderTree();
-  toast("✅ Projekt vytvořen");
+async function idbDel(storeName, id){
+  return idbTx(storeName, "readwrite", async ([s]) => {
+    return new Promise((resolve, reject) => {
+      const req = s.delete(id);
+      req.onsuccess = () => resolve(true);
+      req.onerror = () => reject(req.error);
+    });
+  });
 }
 
-function openProject(pid){
-  currentProject = pid;
-  currentFolder = null;
-  const p = db.projects[pid];
+/* =========================
+   State
+========================= */
+const state = {
+  projects: [],
+  folders: [],
+  photos: [],
+  selectedProjectId: null,
+  selectedFolderId: null,
+};
 
-  document.getElementById("content").innerHTML = `
-    <div class="card">
-      <div class="row" style="justify-content:space-between">
-        <div>
-          <h2 style="margin:0 0 6px">🏠 ${escapeHtml(p.name)}</h2>
-          <div style="color:#6b7280;font-size:13px">Založeno: ${p.created}</div>
-        </div>
-        <div class="row">
-          <button class=\"ghost\" onclick=\"deleteProject('${pid}')\">🗑️ Smazat projekt</button>
-          <button class="primary" onclick="exportProjectSafe()">📦 Export (bez blokování Windows)</button>
-</div>
-      </div>
-      <div class="hint">
-        Tip: Export ukládá ZIP bezpečně použije systémové <b>Uložit jako…</b> (Edge/Chrome na Windows).
-      </div>
-    </div>
-
-    <div class="card">
-      <div class="row">
-        <button class="ghost" onclick="addFolder()">➕ Nová složka</button>
-      </div>
-
-      <div style="margin-top:10px">
-        <div style="font-weight:600;margin-bottom:6px">Technici</div>
-        <div class="row">
-          <input id="techInput" type="text" placeholder="Jméno technika…" style="flex:1; min-width:180px">
-          <button class="primary" onclick="addTech()">Přidat</button>
-        </div>
-        <div id="techList" style="margin-top:10px;color:#111827"></div>
-      </div>
-    </div>
-  `;
-  renderTech();
-  renderTree();
+function uid(){
+  return (crypto && crypto.randomUUID) ? crypto.randomUUID() : (Date.now()+"_"+Math.random().toString(16).slice(2));
 }
 
-function renderTech(){
-  const p = db.projects[currentProject];
-  const el = document.getElementById("techList");
-  if (!el) return;
-  if (p.technici.length === 0) {
-    el.innerHTML = `<div style="color:#6b7280">Zatím žádní technici.</div>`;
+/* =========================
+   UI: render tree
+========================= */
+function renderTree(){
+  const el = $("#tree");
+  el.innerHTML = "";
+
+  if (!state.projects.length){
+    el.innerHTML = `<div style="padding:10px;color:var(--muted)">Žádné projekty</div>`;
     return;
   }
-  el.innerHTML = p.technici.map((t, idx) => `
-    <div class="row" style="justify-content:space-between;margin:6px 0">
-      <div>👷 ${escapeHtml(t)}</div>
-      <button onclick="removeTech(${idx})">🗑️</button>
+
+  for (const p of state.projects){
+    const pRow = document.createElement("div");
+    pRow.className = "row" + (p.id === state.selectedProjectId && !state.selectedFolderId ? " active" : "");
+    pRow.innerHTML = `
+      <div class="l">
+        <span class="emoji">🏠</span>
+        <div class="name">${escapeHtml(p.name)}</div>
+      </div>
+      <button class="mini danger" title="Smazat projekt">🗑️</button>
+    `;
+    pRow.addEventListener("click", () => {
+      selectProject(p.id);
+      if (isMobile()) $("#sidebar").classList.add("collapsed");
+    });
+    pRow.querySelector("button").addEventListener("click", async (e) => {
+      e.stopPropagation();
+      await uiDeleteProject(p.id);
+    });
+    el.appendChild(pRow);
+
+    const folders = state.folders.filter(f => f.projectId === p.id);
+    for (const f of folders){
+      const fRow = document.createElement("div");
+      fRow.className = "row" + (f.id === state.selectedFolderId ? " active" : "");
+      fRow.style.marginLeft = "14px";
+      fRow.innerHTML = `
+        <div class="l">
+          <span class="emoji">📁</span>
+          <div class="name">${escapeHtml(f.name)}</div>
+        </div>
+        <button class="mini danger" title="Smazat složku">🗑️</button>
+      `;
+      fRow.addEventListener("click", () => {
+        selectFolder(f.id);
+        if (isMobile()) $("#sidebar").classList.add("collapsed");
+      });
+      fRow.querySelector("button").addEventListener("click", async (e) => {
+        e.stopPropagation();
+        await uiDeleteFolder(f.id);
+      });
+      el.appendChild(fRow);
+    }
+  }
+}
+
+/* =========================
+   UI: main view
+========================= */
+function setHeader(title, sub){
+  $("#viewTitle").textContent = title;
+  $("#viewSub").textContent = sub || "";
+}
+
+function setActions(nodes){
+  const a = $("#viewActions");
+  a.innerHTML = "";
+  for (const n of (nodes || [])) a.appendChild(n);
+}
+
+function renderLanding(){
+  setHeader("Vítej", "Vytvoř projekt a začni");
+  const body = $("#viewBody");
+  body.innerHTML = `
+    <div class="landing">
+      <div class="hero">Začni vytvořením projektu</div>
+      <div class="p">Vše se ukládá lokálně v prohlížeči (IndexedDB). Export ti stáhne ZIP s celou strukturou.</div>
+      <div class="card" style="width:100%">
+        <h3>Nový projekt</h3>
+        <div class="grid">
+          <input id="inpProjectName" type="text" placeholder="Název projektu…" />
+          <button class="ok" id="btnCreateProject">Vytvořit</button>
+        </div>
+      </div>
+      <div class="credit">Vytvořil Jakub Haas</div>
     </div>
-  `).join("");
-}
-
-function addTech(){
-  const input = document.getElementById("techInput");
-  const val = (input?.value || "").trim();
-  if (!val) return;
-  db.projects[currentProject].technici.push(val);
-  input.value = "";
-  saveMeta();
-  renderTech();
-  toast("👷 Technik přidán");
-}
-function removeTech(idx){
-  db.projects[currentProject].technici.splice(idx,1);
-  saveMeta();
-  renderTech();
-}
-
-
-async function deleteProject(pid){
-  const p = db.projects[pid];
-  if (!p) return;
-
-  const ok = await confirmPopup({
-    title: "Smazat projekt",
-    text: `Opravdu chceš smazat projekt "${p.name}" včetně všech složek, chatu a fotek?`,
-    okText: "Smazat",
-    cancelText: "Zrušit"
+  `;
+  setActions([]);
+  $("#btnCreateProject").addEventListener("click", async () => {
+    const name = ($("#inpProjectName").value || "").trim();
+    await createProject(name || "Nový projekt");
   });
-  if (!ok) return;
-
-  // delete blobs
-  const imageIds = Object.keys(p.images || {});
-  for (const id of imageIds){
-    try { await idbDel(id); } catch(e){ console.warn(e); }
-  }
-
-  delete db.projects[pid];
-
-  if (currentProject === pid){
-    currentProject = null;
-    currentFolder = null;
-    document.getElementById("content").innerHTML = `<h2>Vyber projekt nebo složku</h2>`;
-  }
-
-  saveMeta();
-  renderTree();
-  toast("🗑️ Projekt smazán");
 }
 
-async function deleteFolder(pid, fid){
-  const p = db.projects[pid];
-  const f = p?.folders?.[fid];
-  if (!p || !f) return;
+function renderProjectView(project){
+  setHeader(`🏠 ${project.name}`, "Projekt");
+  const body = $("#viewBody");
+  body.innerHTML = `
+    <div class="card">
+      <h3>Nová složka</h3>
+      <div class="grid">
+        <input id="inpFolderName" type="text" placeholder="Název složky…" />
+        <button class="ok" id="btnCreateFolder">Vytvořit</button>
+      </div>
+    </div>
 
+    <div class="card">
+      <h3>Složky</h3>
+      <div id="folderList"></div>
+    </div>
+  `;
+
+  const folders = state.folders.filter(f => f.projectId === project.id);
+  const list = $("#folderList");
+  if (!folders.length){
+    list.innerHTML = `<div style="color:var(--muted)">Zatím žádné složky.</div>`;
+  } else {
+    list.innerHTML = "";
+    for (const f of folders){
+      const count = state.photos.filter(ph => ph.folderId === f.id).length;
+      const row = document.createElement("div");
+      row.className = "row";
+      row.innerHTML = `
+        <div class="l">
+          <span class="emoji">📁</span>
+          <div class="name">${escapeHtml(f.name)}</div>
+        </div>
+        <div class="meta">${count} fotek</div>
+      `;
+      row.addEventListener("click", () => selectFolder(f.id));
+      list.appendChild(row);
+    }
+  }
+
+  $("#btnCreateFolder").addEventListener("click", async () => {
+    const name = ($("#inpFolderName").value || "").trim();
+    await createFolder(project.id, name || "Nová složka");
+  });
+
+  // Actions: delete project
+  const delBtn = document.createElement("button");
+  delBtn.className = "danger";
+  delBtn.textContent = "🗑️ Smazat projekt";
+  delBtn.addEventListener("click", () => uiDeleteProject(project.id));
+
+  setActions([delBtn]);
+}
+
+function renderFolderView(folder){
+  const project = state.projects.find(p => p.id === folder.projectId);
+  setHeader(`📁 ${folder.name}`, project ? `Projekt: 🏠 ${project.name}` : "Složka");
+  const body = $("#viewBody");
+
+  body.innerHTML = `
+    <div class="card">
+      <h3>Přidat fotky</h3>
+      <div class="toolbar">
+        <label class="file-btn" title="Vybrat nebo vyfotit">
+          📷 / 🖼️ Přidat
+          <input id="fileInput"
+                 type="file"
+                 accept="image/*"
+                 capture="environment"
+                 multiple />
+        </label>
+        <div style="color:var(--muted);font-size:12px">
+          Na mobilu se nabídne i fotoaparát.
+        </div>
+      </div>
+    </div>
+
+    <div class="card">
+      <h3>Fotky</h3>
+      <div id="photos" class="photos"></div>
+    </div>
+  `;
+
+  const fileInput = $("#fileInput");
+  fileInput.addEventListener("change", async (e) => {
+    const files = Array.from(e.target.files || []);
+    if (!files.length) return;
+    await addPhotosToFolder(folder.id, files);
+    // reset input so same file can be re-selected
+    fileInput.value = "";
+  });
+
+  renderPhotos(folder.id);
+
+  const delFolderBtn = document.createElement("button");
+  delFolderBtn.className = "danger";
+  delFolderBtn.textContent = "🗑️ Smazat složku";
+  delFolderBtn.addEventListener("click", () => uiDeleteFolder(folder.id));
+
+  setActions([delFolderBtn]);
+}
+
+function renderPhotos(folderId){
+  const wrap = $("#photos");
+  const photos = state.photos.filter(p => p.folderId === folderId).sort((a,b)=> (a.createdAt||"").localeCompare(b.createdAt||""));
+
+  if (!photos.length){
+    wrap.innerHTML = `<div style="color:var(--muted)">Zatím žádné fotky.</div>`;
+    return;
+  }
+
+  wrap.innerHTML = "";
+  for (const ph of photos){
+    const card = document.createElement("div");
+    card.className = "ph";
+    const img = document.createElement("img");
+    const url = URL.createObjectURL(ph.blob);
+    img.src = url;
+    img.alt = ph.filename || "foto";
+    img.onload = () => URL.revokeObjectURL(url);
+
+    const del = document.createElement("button");
+    del.className = "x";
+    del.textContent = "✕";
+    del.title = "Smazat fotku";
+    del.addEventListener("click", async () => {
+      const ok = await confirmPopup({
+        title: "Smazat fotku",
+        text: `Opravdu chceš smazat „${ph.filename}“?`,
+        okText: "Smazat",
+        cancelText: "Zrušit"
+      });
+      if (!ok) return;
+      await deletePhoto(ph.id);
+    });
+
+    card.appendChild(img);
+    card.appendChild(del);
+    wrap.appendChild(card);
+  }
+}
+
+/* =========================
+   Actions: select
+========================= */
+function selectProject(projectId){
+  state.selectedProjectId = projectId;
+  state.selectedFolderId = null;
+  const p = state.projects.find(x => x.id === projectId);
+  if (!p) return;
+  renderTree();
+  renderProjectView(p);
+}
+
+function selectFolder(folderId){
+  const f = state.folders.find(x => x.id === folderId);
+  if (!f) return;
+  state.selectedProjectId = f.projectId;
+  state.selectedFolderId = folderId;
+  renderTree();
+  renderFolderView(f);
+}
+
+/* =========================
+   CRUD: Projects, Folders, Photos
+========================= */
+async function refresh(){
+  state.projects = (await idbGetAll("projects")).sort((a,b)=> (a.createdAt||"").localeCompare(b.createdAt||""));
+  state.folders = (await idbGetAll("folders")).sort((a,b)=> (a.createdAt||"").localeCompare(b.createdAt||""));
+  state.photos  = (await idbGetAll("photos")).sort((a,b)=> (a.createdAt||"").localeCompare(b.createdAt||""));
+
+  // keep selection valid
+  if (state.selectedFolderId && !state.folders.find(f => f.id === state.selectedFolderId)){
+    state.selectedFolderId = null;
+  }
+  if (state.selectedProjectId && !state.projects.find(p => p.id === state.selectedProjectId)){
+    state.selectedProjectId = null;
+    state.selectedFolderId = null;
+  }
+
+  renderTree();
+
+  if (!state.projects.length){
+    renderLanding();
+    return;
+  }
+
+  if (state.selectedFolderId){
+    selectFolder(state.selectedFolderId);
+    return;
+  }
+
+  if (state.selectedProjectId){
+    selectProject(state.selectedProjectId);
+    return;
+  }
+
+  // default select first project
+  selectProject(state.projects[0].id);
+}
+
+async function createProject(name){
+  const p = { id: uid(), name: name.trim(), createdAt: nowISO() };
+  await idbPut("projects", p);
+  state.selectedProjectId = p.id;
+  state.selectedFolderId = null;
+  await refresh();
+  if (isMobile()) $("#sidebar").classList.add("collapsed");
+}
+
+async function createFolder(projectId, name){
+  const f = { id: uid(), projectId, name: name.trim(), createdAt: nowISO() };
+  await idbPut("folders", f);
+  state.selectedFolderId = f.id;
+  await refresh();
+}
+
+async function addPhotosToFolder(folderId, files){
+  const folder = state.folders.find(f => f.id === folderId);
+  if (!folder) return;
+  const projectId = folder.projectId;
+
+  for (const file of files){
+    // ensure it's image
+    if (!file.type.startsWith("image/")) continue;
+    const blob = file; // File is a Blob
+    const rec = {
+      id: uid(),
+      projectId,
+      folderId,
+      filename: file.name || `foto_${Date.now()}.jpg`,
+      type: file.type || "image/jpeg",
+      createdAt: nowISO(),
+      blob,
+    };
+    await idbPut("photos", rec);
+  }
+  await refresh();
+}
+
+async function deletePhoto(photoId){
+  await idbDel("photos", photoId);
+  await refresh();
+}
+
+async function uiDeleteFolder(folderId){
+  const folder = state.folders.find(f => f.id === folderId);
+  if (!folder) return;
   const ok = await confirmPopup({
     title: "Smazat složku",
-    text: `Opravdu chceš smazat složku "${f.name}" včetně chatu a fotek?`,
+    text: `Opravdu chceš smazat složku „${folder.name}“ včetně všech fotek?`,
     okText: "Smazat",
     cancelText: "Zrušit"
   });
   if (!ok) return;
 
-  // delete images in this folder
-  const imgs = Object.values(p.images || {}).filter(i => i.folderId === fid);
-  for (const img of imgs){
-    try { await idbDel(img.id); } catch(e){ console.warn(e); }
-    delete p.images[img.id];
+  // delete photos in folder
+  const photos = state.photos.filter(p => p.folderId === folderId);
+  for (const ph of photos){
+    await idbDel("photos", ph.id);
   }
-
-  delete p.folders[fid];
-
-  if (currentProject === pid && currentFolder === fid){
-    currentFolder = null;
-    openProject(pid);
-  } else {
-    saveMeta();
-    renderTree();
-  }
-
-  saveMeta();
-  renderTree();
-  toast("🗑️ Složka smazána");
+  await idbDel("folders", folderId);
+  state.selectedFolderId = null;
+  await refresh();
 }
 
-/** Folders */
-function addFolder(){
-  if (!currentProject) return toast("Vyber projekt");
-  const name = prompt("Název složky:");
-  if(!name) return;
-  const id = Date.now().toString();
-  db.projects[currentProject].folders[id] = {
-    id,
-    name: safeName(name),
-    chat: []
-  };
-  saveMeta();
-  renderTree();
-  toast("📁 Složka vytvořena");
-}
-
-function openFolder(pid, fid){
-  currentProject = pid;
-  currentFolder = fid;
-  const p = db.projects[pid];
-  const f = p.folders[fid];
-
-  document.getElementById("content").innerHTML = `
-    <div class="card">
-      <div class="row" style="justify-content:space-between">
-        <div>
-          <div style="color:#6b7280;font-size:13px">${escapeHtml(p.name)}</div>
-          <h2 style="margin:2px 0 0">📁 ${escapeHtml(f.name)}</h2>
-        </div>
-        <button class="ghost" onclick="deleteFolder(\'${pid}\',\'${fid}\')">🗑️ Smazat složku</button>
-        <button class="ghost" onclick="openProject('${pid}')">← Zpět na projekt</button>
-      </div>
-    </div>
-
-    <div class="card">
-      <div style="font-weight:600;margin-bottom:8px">Komentáře (chat)</div>
-      <div class="chat" id="chat"></div>
-      <div class="row" style="margin-top:10px">
-        <input id="authorInput" type="text" placeholder="Autor (volitelné)" style="flex:1; min-width:160px">
-        <input id="chatInput" type="text" placeholder="Napiš komentář…" style="flex:2; min-width:220px">
-        <button class="primary" onclick="sendMsg()">Odeslat</button>
-      </div>
-    </div>
-
-    <div class="card">
-      <div style="font-weight:600;margin-bottom:8px">Fotky</div>
-      <div class="row" style="margin-bottom:10px">
-        <input type="file" accept="image/*" capture="environment" onchange="uploadImage(event)">
-        <div class="hint">Na mobilu nabídne i fotoaparát.</div>
-      </div>
-      <div class="images" id="images"></div>
-    </div>
-  `;
-
-  renderChat();
-  renderImages();
-  renderTree();
-}
-
-/** Chat */
-function sendMsg(){
-  const author = (document.getElementById("authorInput")?.value || "").trim();
-  const text = (document.getElementById("chatInput")?.value || "").trim();
-  if(!text) return;
-
-  const f = db.projects[currentProject].folders[currentFolder];
-  f.chat.push({ author: author || "—", text, time: nowStr() });
-
-  document.getElementById("chatInput").value = "";
-  saveMeta();
-  renderChat();
-  toast("💬 Odesláno");
-}
-
-function renderChat(){
-  const c = document.getElementById("chat");
-  if (!c) return;
-  const f = db.projects[currentProject].folders[currentFolder];
-  if (!f.chat.length){
-    c.innerHTML = `<div style="color:#6b7280">Zatím žádné zprávy.</div>`;
-    return;
-  }
-  c.innerHTML = f.chat.map(m => `
-    <div class="msg">
-      <div class="bubble">${escapeHtml(m.text)}</div>
-      <div class="meta">${escapeHtml(m.author)} • ${escapeHtml(m.time)}</div>
-    </div>
-  `).join("");
-  c.scrollTop = c.scrollHeight;
-}
-
-/** Images: store Blob in IndexedDB, metadata in localStorage */
-async function uploadImage(e){
-  if(!currentFolder) return toast("Vyber složku");
-  const file = e.target.files?.[0];
-  if(!file) return;
-
-  const base = file.name.replace(/\.[^.]+$/,"");
-  const desired = prompt("Název fotky (bez .png):", base);
-  if (desired === null) return;
-  const finalName = ensurePng(desired);
-
-  const imageId = Date.now().toString();
-  const blob = new Blob([await file.arrayBuffer()], { type: file.type || "image/png" });
-
-  await idbSet(imageId, blob);
-
-  db.projects[currentProject].images[imageId] = {
-    id: imageId,
-    folderId: currentFolder,
-    name: finalName,
-    created: nowStr()
-  };
-  saveMeta();
-
-  e.target.value = "";
-  renderImages();
-  toast("📸 Foto úspěšně přidáno");
-}
-
-async function renderImages(){
-  const d = document.getElementById("images");
-  if (!d) return;
-  d.innerHTML = "";
-
-  const p = db.projects[currentProject];
-  const imgs = Object.values(p.images).filter(i => i.folderId === currentFolder);
-
-  if (!imgs.length){
-    d.innerHTML = `<div style="color:#6b7280">Zatím žádné fotky.</div>`;
-    return;
-  }
-
-  for (const meta of imgs){
-    const blob = await idbGet(meta.id);
-    if (!blob) continue;
-
-    const url = URL.createObjectURL(blob);
-    const box = document.createElement("div");
-    box.className = "image-box";
-    box.innerHTML = `
-      <input value="${meta.name}" />
-      <img src="${url}" alt="">
-      <div class="row" style="justify-content:space-between; margin-top:6px">
-        <button onclick="deleteImage('${meta.id}')">🗑️</button>
-        <div style="color:#6b7280;font-size:12px">${escapeHtml(meta.created)}</div>
-      </div>
-    `;
-
-    const input = box.querySelector("input");
-    input.oninput = () => {
-      meta.name = ensurePng(input.value.replace(/\.png$/i,""));
-      saveMeta();
-    };
-
-    d.appendChild(box);
-  }
-}
-
-async function deleteImage(imageId){
-  const p = db.projects[currentProject];
-  if (!p.images[imageId]) return;
-  await idbDel(imageId);
-  delete p.images[imageId];
-  saveMeta();
-  renderImages();
-  toast("🗑️ Foto smazáno");
-}
-
-/** Build ZIP blob */
-async function buildZipBlobForProject(projectId){
-  const p = db.projects[projectId];
-  const zip = new JSZip();
-
-  const rootName = safeName(p.name) || "Projekt";
-  const root = zip.folder(rootName);
-
-  // README with CRLF
-  const photosCount = Object.keys(p.images).length;
-  const tech = p.technici.length ? p.technici.join(", ") : "-";
-  let readme = "";
-  readme += `Projekt: ${p.name}\r\n`;
-  readme += `Datum založení: ${p.created}\r\n`;
-  readme += `Technici: ${tech}\r\n`;
-  readme += `Počet fotek: ${photosCount}\r\n\r\n`;
-  readme += `Komentáře:\r\n`;
-
-  Object.values(p.folders).forEach(f => {
-    readme += `\r\n[${f.name}]\r\n`;
-    if (!f.chat?.length) {
-      readme += `- (bez zpráv)\r\n`;
-    } else {
-      f.chat.forEach(m => {
-        readme += `- ${m.time} (${m.author}): ${m.text}\r\n`;
-      });
-    }
+async function uiDeleteProject(projectId){
+  const project = state.projects.find(p => p.id === projectId);
+  if (!project) return;
+  const ok = await confirmPopup({
+    title: "Smazat projekt",
+    text: `Opravdu chceš smazat projekt „${project.name}“ včetně složek a všech fotek?`,
+    okText: "Smazat",
+    cancelText: "Zrušit"
   });
+  if (!ok) return;
 
-  root.file("README.txt", readme);
+  // delete all folders + photos for project
+  const folders = state.folders.filter(f => f.projectId === projectId);
+  const photos  = state.photos.filter(ph => ph.projectId === projectId);
 
-  // Ensure folder structure exists in the ZIP even if folders are empty.
-  // Some unzip tools won't show empty dirs unless a directory entry exists.
-  for (const f of Object.values(p.folders)){
-    const folderName = safeName(f.name) || "Složka";
-    // Create explicit dir entry (not just a folder handle)
-    root.folder(folderName);
-    root.file(folderName + "/", "", { dir: true });
-  }
+  for (const ph of photos) await idbDel("photos", ph.id);
+  for (const f of folders) await idbDel("folders", f.id);
+  await idbDel("projects", projectId);
 
-  // images in folders
-  for (const meta of Object.values(p.images)){
-    const folder = p.folders[meta.folderId];
-    const folderName = folder ? safeName(folder.name) : "Nezarazeno";
-    const blob = await idbGet(meta.id);
-    if (!blob) continue;
-
-    const fileName = ensurePng(meta.name.replace(/\.png$/i,""));
-    root.folder(folderName).file(fileName, blob, { binary: true });
-  }
-
-  return await zip.generateAsync({ type: "blob", compression: "DEFLATE" });
+  state.selectedProjectId = null;
+  state.selectedFolderId = null;
+  await refresh();
 }
 
-/** Export: SAFE (system Save As) */
-async function exportProjectSafe(){
-  if(!currentProject) return;
+/* =========================
+   ZIP export (no libraries)
+   - store method (no compression)
+   - supports UTF-8
+   - includes empty directories
+========================= */
+function u16(n){ return [n & 255, (n>>>8) & 255]; }
+function u32(n){ return [n & 255, (n>>>8)&255, (n>>>16)&255, (n>>>24)&255]; }
 
-  // File System Access API available?
-  if (!window.showSaveFilePicker) {
-    toast("Tento prohlížeč neumí bezpečné ukládání. Použij jiný prohlížeč (ideálně Chrome/Edge) nebo povol stahování ZIP.");
+const crcTable = (() => {
+  const table = new Uint32Array(256);
+  for (let i=0;i<256;i++){
+    let c = i;
+    for (let k=0;k<8;k++){
+      c = (c & 1) ? (0xEDB88320 ^ (c >>> 1)) : (c >>> 1);
+    }
+    table[i] = c >>> 0;
+  }
+  return table;
+})();
+
+function crc32(buf){
+  let c = 0xFFFFFFFF;
+  for (let i=0;i<buf.length;i++){
+    c = crcTable[(c ^ buf[i]) & 0xFF] ^ (c >>> 8);
+  }
+  return (c ^ 0xFFFFFFFF) >>> 0;
+}
+
+function utf8Bytes(str){
+  return new TextEncoder().encode(str);
+}
+
+function msDosTime(date){
+  // date: JS Date
+  const d = date;
+  const time =
+    ((d.getHours() & 0x1F) << 11) |
+    ((d.getMinutes() & 0x3F) << 5) |
+    ((Math.floor(d.getSeconds()/2) & 0x1F));
+  const dt =
+    (((d.getFullYear() - 1980) & 0x7F) << 9) |
+    (((d.getMonth()+1) & 0x0F) << 5) |
+    (d.getDate() & 0x1F);
+  return { time, dt };
+}
+
+async function exportSelectedProject(){
+  const pid = state.selectedProjectId;
+  const project = state.projects.find(p => p.id === pid);
+  if (!project){
+    alert("Vyber projekt.");
     return;
   }
 
-  try {
-    const p = db.projects[currentProject];
-    const blob = await buildZipBlobForProject(currentProject);
+  const pName = sanitizeName(project.name);
+  const baseDir = `${pName}/`;
 
-    const handle = await window.showSaveFilePicker({
-      suggestedName: safeName(p.name) + ".zip",
-      types: [{
-        description: "ZIP archiv",
-        accept: { "application/zip": [".zip"] }
-      }]
-    });
+  const folders = state.folders.filter(f => f.projectId === pid);
+  const photos = state.photos.filter(ph => ph.projectId === pid);
 
-    const writable = await handle.createWritable();
-    await writable.write(blob);
-    await writable.close();
+  // entries: {name, data(Uint8Array), isDir, mtime}
+  const entries = [];
 
-    toast("📦 Export uložen (bez blokování Windows)");
-  } catch (err) {
-    // User cancelled or error
-    if (String(err?.name || "").toLowerCase().includes("abort")) {
-      toast("Uložení zrušeno");
-      return;
-    }
-    console.error(err);
-    toast("Nepodařilo se uložit ZIP");
+  // Always include project root dir
+  entries.push({ name: baseDir, data: new Uint8Array(0), isDir:true, mtime: new Date() });
+
+  // Include all folder dirs (even empty)
+  for (const f of folders){
+    const fName = sanitizeName(f.name);
+    entries.push({ name: `${baseDir}${fName}/`, data: new Uint8Array(0), isDir:true, mtime: new Date() });
   }
+
+  // Include photo files
+  for (const ph of photos){
+    const folder = folders.find(f => f.id === ph.folderId);
+    const folderName = folder ? sanitizeName(folder.name) : "Nezarazene";
+    const fileName = sanitizeName(ph.filename || "foto.jpg");
+    const path = `${baseDir}${folderName}/${fileName}`;
+
+    const arr = new Uint8Array(await ph.blob.arrayBuffer());
+    entries.push({ name: path, data: arr, isDir:false, mtime: new Date(ph.createdAt || Date.now()) });
+  }
+
+  // Build ZIP
+  const outParts = [];
+  const centralParts = [];
+  let offset = 0;
+
+  for (const e of entries){
+    const nameBytes = utf8Bytes(e.name);
+    const data = e.data || new Uint8Array(0);
+    const { time, dt } = msDosTime(e.mtime || new Date());
+    const crc = crc32(data);
+    const compSize = data.length;
+    const uncompSize = data.length;
+    const gpFlag = 0x0800; // UTF-8
+    const method = 0; // stored
+
+    // external attrs: directory bit for dirs
+    const extAttr = e.isDir ? 0x10 : 0x00;
+
+    // local file header
+    const local = [
+      ...u32(0x04034b50),
+      ...u16(20),               // version needed
+      ...u16(gpFlag),
+      ...u16(method),
+      ...u16(time),
+      ...u16(dt),
+      ...u32(crc),
+      ...u32(compSize),
+      ...u32(uncompSize),
+      ...u16(nameBytes.length),
+      ...u16(0),                // extra length
+    ];
+    const localBytes = new Uint8Array(local);
+    outParts.push(localBytes, nameBytes, data);
+
+    const localHeaderOffset = offset;
+    offset += localBytes.length + nameBytes.length + data.length;
+
+    // central directory header
+    const central = [
+      ...u32(0x02014b50),
+      ...u16(0x031E),           // version made by (3=Unix, 30=ver)
+      ...u16(20),               // version needed
+      ...u16(gpFlag),
+      ...u16(method),
+      ...u16(time),
+      ...u16(dt),
+      ...u32(crc),
+      ...u32(compSize),
+      ...u32(uncompSize),
+      ...u16(nameBytes.length),
+      ...u16(0),                // extra
+      ...u16(0),                // comment
+      ...u16(0),                // disk number
+      ...u16(0),                // internal attrs
+      ...u32(extAttr << 16),    // external attrs
+      ...u32(localHeaderOffset),
+    ];
+    const centralBytes = new Uint8Array(central);
+    centralParts.push(centralBytes, nameBytes);
+  }
+
+  const centralSize = centralParts.reduce((s, p) => s + p.length, 0);
+  const centralOffset = offset;
+
+  outParts.push(...centralParts);
+  offset += centralSize;
+
+  // end of central directory
+  const eocd = new Uint8Array([
+    ...u32(0x06054b50),
+    ...u16(0),                 // disk
+    ...u16(0),                 // central disk
+    ...u16(entries.length),
+    ...u16(entries.length),
+    ...u32(centralSize),
+    ...u32(centralOffset),
+    ...u16(0),                 // comment len
+  ]);
+  outParts.push(eocd);
+
+  const zipBlob = new Blob(outParts, { type: "application/zip" });
+  downloadBlob(zipBlob, `${pName}.zip`);
 }
 
+/* =========================
+   Escape HTML
+========================= */
+function escapeHtml(s){
+  return String(s || "")
+    .replaceAll("&","&amp;")
+    .replaceAll("<","&lt;")
+    .replaceAll(">","&gt;")
+    .replaceAll('"',"&quot;")
+    .replaceAll("'","&#039;");
+}
 
-/** init */
-initResponsive();
-renderTree();
+/* =========================
+   Events
+========================= */
+$("#btnToggleSidebar").addEventListener("click", () => {
+  $("#sidebar").classList.toggle("collapsed");
+});
 
+$("#btnNewProject").addEventListener("click", async () => {
+  const name = prompt("Název projektu:");
+  if (!name) return;
+  await createProject(name);
+});
 
+$("#btnExport").addEventListener("click", async () => {
+  await exportSelectedProject();
+});
+
+/* =========================
+   Init
+========================= */
+(async function init(){
+  // little status
+  $("#chipStatus").textContent = "Offline • Lokálně (IndexedDB)";
+  await refresh();
+
+  // on rotation / resize keep layout stable
+  window.addEventListener("resize", () => {
+    // no-op; using 100dvh handles mobile address bar better
+  }, { passive:true });
+})();
 </script>
-
-  <!-- Confirm popup -->
-  <div id="confirmOverlay" class="confirm-overlay" hidden>
-    <div class="confirm-modal" role="dialog" aria-modal="true" aria-labelledby="confirmTitle">
-      <div class="confirm-title" id="confirmTitle">Potvrzení</div>
-      <div class="confirm-text" id="confirmText">Opravdu pokračovat?</div>
-      <div class="confirm-actions">
-        <button id="confirmCancel" type="button" class="secondary">Zrušit</button>
-        <button id="confirmOk" type="button" class="danger">Smazat</button>
-      </div>
-    </div>
-  </div>
-
 </body>
 </html>
-
