@@ -1280,158 +1280,137 @@ function msDosTime(date){
   return { time, dt };
 }
 
- async function exportSelectedProject(){
-  try{
-    const pid = state.selectedProjectId;
-    const project = state.projects.find(p => p.id === pid);
-    if (!project){
-      alert("Vyber projekt.");
-      return;
-    }
-
-    const pName = sanitizeName(project.name);
-    const baseDir = `${pName}/`;
-
-    const folders = state.folders.filter(f => f.projectId === pid);
-    const photos  = state.photos.filter(ph => ph.projectId === pid);
-
-    const entries = [];
-    // root dir
-    entries.push({ name: baseDir, data: new Uint8Array(0), isDir:true, mtime: new Date() });
-
-    // folder dirs (+ info)
-    for (const f of folders){
-      const fName = sanitizeName(f.name);
-      entries.push({ name: `${baseDir}${fName}/`, data: new Uint8Array(0), isDir:true, mtime: new Date() });
-
-      const metaText = `Technik: ${f.tech || ""}\nPoznámky:\n${f.notes || ""}\n`;
-      entries.push({
-        name: `${baseDir}${fName}/_info.txt`,
-        data: utf8Bytes(metaText),
-        isDir:false,
-        mtime: new Date()
-      });
-    }
-
-    // photo files (+ meta)
-    for (const ph of photos){
-      const folder = folders.find(f => f.id === ph.folderId);
-      const folderName = folder ? sanitizeName(folder.name) : "Nezarazene";
-
-      const ext = extFromMimeOrName({ name: ph.filename, type: ph.type });
-      const base = sanitizeName(ph.label || baseNameNoExt(ph.filename) || "foto");
-      const fileName = `${base}.${ext}`;
-      const path = `${baseDir}${folderName}/${fileName}`;
-
-      const arr = new Uint8Array(await ph.blob.arrayBuffer());
-      entries.push({ name: path, data: arr, isDir:false, mtime: new Date(ph.createdAt || Date.now()) });
-
-      const metaText = `Název: ${ph.label || ""}\nTechnik: ${ph.tech || ""}\nPoznámky:\n${ph.notes || ""}\n`;
-      entries.push({
-        name: `${baseDir}${folderName}/${base}_meta.txt`,
-        data: utf8Bytes(metaText),
-        isDir:false,
-        mtime: new Date(ph.createdAt || Date.now())
-      });
-    }
-
-    // ---- ZIP build (Windows Explorer friendly) ----
-    const outParts = [];
-    const centralParts = [];
-    let offset = 0;
-
-    for (const e of entries){
-      const nameBytes = utf8Bytes(e.name);
-      const data = e.data || new Uint8Array(0);
-
-      const { time, dt } = msDosTime(e.mtime || new Date());
-      const crc = crc32(data);
-      const compSize = data.length;
-      const uncompSize = data.length;
-
-      const gpFlag = 0x0800; // UTF-8
-      const method = 0;      // stored
-
-      // DOS attrs: dir=0x10, file=0x20 (archive) – Windows tohle bere nejlíp
-      const dosAttr = e.isDir ? 0x10 : 0x20;
-
-      // local header
-      const local = [
-        ...u32(0x04034b50),
-        ...u16(20),
-        ...u16(gpFlag),
-        ...u16(method),
-        ...u16(time),
-        ...u16(dt),
-        ...u32(crc),
-        ...u32(compSize),
-        ...u32(uncompSize),
-        ...u16(nameBytes.length),
-        ...u16(0),
-      ];
-      const localBytes = new Uint8Array(local);
-      outParts.push(localBytes, nameBytes, data);
-
-      const localHeaderOffset = offset;
-      offset += localBytes.length + nameBytes.length + data.length;
-
-      // central header
-      const central = [
-        ...u32(0x02014b50),
-        ...u16(0x0014),         // version made by: DOS (0) + 20
-        ...u16(20),             // version needed
-        ...u16(gpFlag),
-        ...u16(method),
-        ...u16(time),
-        ...u16(dt),
-        ...u32(crc),
-        ...u32(compSize),
-        ...u32(uncompSize),
-        ...u16(nameBytes.length),
-        ...u16(0),              // extra
-        ...u16(0),              // comment
-        ...u16(0),              // disk number
-        ...u16(0),              // internal attrs
-        ...u32(dosAttr),        // ✅ external attrs (DOS) – NE <<16
-        ...u32(localHeaderOffset),
-      ];
-      const centralBytes = new Uint8Array(central);
-      centralParts.push(centralBytes, nameBytes);
-    }
-
-    const centralSize = centralParts.reduce((s, p) => s + p.length, 0);
-    const centralOffset = offset;
-
-    outParts.push(...centralParts);
-    offset += centralSize;
-
-    const eocd = new Uint8Array([
-      ...u32(0x06054b50),
-      ...u16(0),
-      ...u16(0),
-      ...u16(entries.length),
-      ...u16(entries.length),
-      ...u32(centralSize),
-      ...u32(centralOffset),
-      ...u16(0),
-    ]);
-    outParts.push(eocd);
-
-    const zipBlob = new Blob(outParts, { type: "application/zip" });
-    downloadBlob(zipBlob, `${pName}.zip`);
-  } catch(err){
-    console.error(err);
-    alert("Export spadl: " + (err?.message || err));
+async function exportSelectedProject(){
+  const pid = state.selectedProjectId;
+  const project = state.projects.find(p => p.id === pid);
+  if (!project){
+    alert("Vyber projekt.");
+    return;
   }
-}
 
+  const pName = sanitizeName(project.name);
+  const baseDir = `${pName}/`;
+
+  const folders = state.folders.filter(f => f.projectId === pid);
+  const photos = state.photos.filter(ph => ph.projectId === pid);
+
+  const entries = [];
+  entries.push({ name: baseDir, data: new Uint8Array(0), isDir:true, mtime: new Date() });
+
+  for (const f of folders){
+    const fName = sanitizeName(f.name);
+    entries.push({ name: `${baseDir}${fName}/`, data: new Uint8Array(0), isDir:true, mtime: new Date() });
+
+    // uložit i folder meta do txt (volitelné, ale praktické)
+    const metaText = `Technik: ${f.tech || ""}\nPoznámky:\n${f.notes || ""}\n`;
+    const metaBytes = utf8Bytes(metaText);
+    entries.push({ name: `${baseDir}${fName}/_info.txt`, data: metaBytes, isDir:false, mtime: new Date() });
+  }
+
+  for (const ph of photos){
+    const folder = folders.find(f => f.id === ph.folderId);
+    const folderName = folder ? sanitizeName(folder.name) : "Nezarazene";
+
+    const ext = extFromMimeOrName({ name: ph.filename, type: ph.type });
+    const base = sanitizeName(ph.label || baseNameNoExt(ph.filename) || "foto");
+    const fileName = `${base}.${ext}`;
+    const path = `${baseDir}${folderName}/${fileName}`;
+
+    const arr = new Uint8Array(await ph.blob.arrayBuffer());
+    entries.push({ name: path, data: arr, isDir:false, mtime: new Date(ph.createdAt || Date.now()) });
+
+    // metadata per photo
+    const metaText = `Název: ${ph.label || ""}\nTechnik: ${ph.tech || ""}\nPoznámky:\n${ph.notes || ""}\n`;
+    const metaBytes = utf8Bytes(metaText);
+    entries.push({ name: `${baseDir}${folderName}/${base}_meta.txt`, data: metaBytes, isDir:false, mtime: new Date(ph.createdAt || Date.now()) });
+  }
+
+  const outParts = [];
+  const centralParts = [];
+  let offset = 0;
+
+  for (const e of entries){
+    const nameBytes = utf8Bytes(e.name);
+    const data = e.data || new Uint8Array(0);
+    const { time, dt } = msDosTime(e.mtime || new Date());
+    const crc = crc32(data);
+    const compSize = data.length;
+    const uncompSize = data.length;
+    const gpFlag = 0x0800;
+    const method = 0;
+    const extAttr = e.isDir ? 0x10 : 0x00;
+
+    const local = [
+      ...u32(0x04034b50),
+      ...u16(20),
+      ...u16(gpFlag),
+      ...u16(method),
+      ...u16(time),
+      ...u16(dt),
+      ...u32(crc),
+      ...u32(compSize),
+      ...u32(uncompSize),
+      ...u16(nameBytes.length),
+      ...u16(0),
+    ];
+    const localBytes = new Uint8Array(local);
+    outParts.push(localBytes, nameBytes, data);
+
+    const localHeaderOffset = offset;
+    offset += localBytes.length + nameBytes.length + data.length;
+
+    const central = [
+      ...u32(0x02014b50),
+      ...u16(0x031E),
+      ...u16(20),
+      ...u16(gpFlag),
+      ...u16(method),
+      ...u16(time),
+      ...u16(dt),
+      ...u32(crc),
+      ...u32(compSize),
+      ...u32(uncompSize),
+      ...u16(nameBytes.length),
+      ...u16(0),
+      ...u16(0),
+      ...u16(0),
+      ...u16(0),
+      ...u16(0),
+      ...u32(extAttr << 16),
+      ...u32(localHeaderOffset),
+    ];
+    const centralBytes = new Uint8Array(central);
+    centralParts.push(centralBytes, nameBytes);
+  }
+
+  const centralSize = centralParts.reduce((s, p) => s + p.length, 0);
+  const centralOffset = offset;
+
+  outParts.push(...centralParts);
+  offset += centralSize;
+
+  const eocd = new Uint8Array([
+    ...u32(0x06054b50),
+    ...u16(0),
+    ...u16(0),
+    ...u16(entries.length),
+    ...u16(entries.length),
+    ...u32(centralSize),
+    ...u32(centralOffset),
+    ...u16(0),
+  ]);
+  outParts.push(eocd);
+
+  const zipBlob = new Blob(outParts, { type: "application/zip" });
+  downloadBlob(zipBlob, `${pName}.zip`);
+}
 
 /* =========================
    Events
 ========================= */
 $("#btnToggleSidebar").addEventListener("click", () => {
   $("#sidebar").classList.toggle("collapsed");
-});async
+});
 
 $("#hdrProjects").addEventListener("click", () => {
   if (isMobile()) $("#sidebar").classList.toggle("collapsed");
