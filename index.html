@@ -918,10 +918,8 @@ function renderFolderView(folder){
       <h3>Přidat fotky</h3>
       <div class="toolbar">
         <button class="file-btn" type="button" id="btnPickGallery">🖼️ Galerie</button>
-        <button class="file-btn" type="button" id="btnPickCamera">📷 Foto</button>
 
         <input id="fileGallery" class="hidden-file" type="file" accept="image/*" multiple />
-        <input id="fileCamera" class="hidden-file" type="file" accept="image/*" capture="environment" />
 
         <div style="color:var(--muted);font-size:12px">
           Foto po vyfocení otevře rovnou popis.
@@ -947,24 +945,15 @@ function renderFolderView(folder){
   const fileCamera  = $("#fileCamera");
 
   $("#btnPickGallery").addEventListener("click", () => fileGallery.click());
-  $("#btnPickCamera").addEventListener("click", () => fileCamera.click());
 
   // Galerie: uloží, popis lze doplnit přes "Upravit" na thumbnail
   fileGallery.addEventListener("change", async (e) => {
     const files = Array.from(e.target.files || []);
     if (!files.length) return;
-    await addPhotosToFolder(folder.id, files, { askMeta:false });
+    await addPhotosToFolder(folder.id, files);
     fileGallery.value = "";
   });
 
-  // Kamera: po jedné + hned popis
-  fileCamera.addEventListener("change", async (e) => {
-    const files = Array.from(e.target.files || []);
-    if (!files.length) return;
-    // většinou 1 soubor
-    await addPhotosToFolder(folder.id, files, { askMeta:true });
-    fileCamera.value = "";
-  });
 
   renderPhotos(folder.id);
 
