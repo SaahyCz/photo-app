@@ -2,9 +2,7 @@
 <html lang="cs">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<meta name="theme-color" content="#111827">
-<link rel="manifest" href="manifest.webmanifest">
+<meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Projektový správce fotek</title>
 <script src="https://cdn.jsdelivr.net/npm/jszip@3.10.1/dist/jszip.min.js"></script>
 
@@ -48,40 +46,77 @@
   }
   .toast.show { opacity:1 }
 
-  /* mobile */
-  @media (max-width: 860px){
-    body{ flex-direction:column; height:100dvh; }
-    #sidebar{ width:auto; height:42dvh; }
-    #content{ height:58dvh; }
+  .tree-item { display:flex; align-items:center; justify-content:space-between; gap:8px; }
+  .tree-title { flex:1; min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+  .iconbtn { background:transparent; color:#9ca3af; padding:6px 8px; border-radius:10px; }
+  .iconbtn:hover { background:#111827; color:#fff }
+  .project .iconbtn:hover { background:#111827; }
+  .folder .iconbtn:hover { background:#1f2937; }
+
+  /* Mobile: keep similar flow, sidebar on top, content below */
+  @media (max-width: 900px){
+    body { flex-direction:column; height:auto; min-height:100vh; }
+    #sidebar { width:100%; padding:12px; position:sticky; top:0; z-index:10; max-height:44vh; }
+    #tree { max-height: calc(44vh - 56px); overflow:auto; }
+    #content { padding:12px; }
+    .images { gap:8px; }
+    .image-box { width: calc(50% - 8px); }
   }
+  @media (max-width: 420px){
+    .image-box { width: 100%; }
+  }
+
+
+  /* Confirm popup */
+  .confirm-overlay[hidden]{ display:none; }
+  .confirm-overlay{
+    position:fixed; inset:0; z-index:9999;
+    display:flex; align-items:center; justify-content:center;
+    padding:16px; background:rgba(0,0,0,.45);
+  }
+  .confirm-modal{
+    width:min(520px,100%);
+    background:#0b1220; color:#fff;
+    border:1px solid rgba(255,255,255,.08);
+    border-radius:16px;
+    box-shadow:0 10px 40px rgba(0,0,0,.45);
+    padding:16px;
+  }
+  .confirm-title{ font-size:16px; font-weight:800; margin-bottom:8px; }
+  .confirm-text{ font-size:14px; opacity:.9; line-height:1.35; margin-bottom:14px; }
+  .confirm-actions{ display:flex; gap:10px; justify-content:flex-end; }
+  .confirm-actions button{ min-height:44px; padding:10px 14px; border-radius:12px; }
+  .danger{ background:#ef4444; border:none; color:#fff; cursor:pointer; }
+  .danger:hover{ filter:brightness(.95); }
+
 </style>
 </head>
 
 <body>
   <div id="sidebar">
-    <div class="row" style="margin-bottom:10px">
+    <div class="row" style="margin-bottom:10px; justify-content:space-between">
       <button class="primary" onclick="addProject()">➕ Nový projekt</button>
+      <button class="ghost" onclick="toggleTree()" style="display:none" id="toggleTreeBtn">☰ Projekty</button>
     </div>
     <div id="tree"></div>
   </div>
 
   <div id="content">
     <h2>Vyber projekt nebo složku</h2>
-    <div class="hint">Tip: pro mobilní „appku“ otevři stránku v Chrome/Edge a zvol „Přidat na plochu“.</div>
+    <div style="color:#6b7280;font-size:13px;margin-top:8px">Vytvořil Jakub Haas</div>
   </div>
 
   <div class="toast" id="toast"></div>
 
 <script>
-/** Register service worker for PWA/offline */
-if ("serviceWorker" in navigator) {
-  window.addEventListener("load", () => navigator.serviceWorker.register("./sw.js").catch(()=>{}));
-}
 
-/** IndexedDB: store image Blobs safely */
+
+/** -----------------------------
+ *  IndexedDB: ukládá Blob fotek bezpečně (bez rozbití JSONem)
+ * ----------------------------- */
 const DB_NAME = "photo_manager_db";
 const DB_VER = 1;
-const STORE = "images";
+const STORE = "images"; // key: imageId, value: Blob
 
 function idbOpen() {
   return new Promise((resolve, reject) => {
@@ -122,7 +157,9 @@ async function idbDel(key) {
   });
 }
 
-/** App metadata */
+/** -----------------------------
+ *  App metadata (localStorage)
+ * ----------------------------- */
 let db = { projects: {} };
 let currentProject = null;
 let currentFolder = null;
@@ -132,12 +169,67 @@ function toast(msg){
   t.textContent=msg; t.classList.add("show");
   setTimeout(()=>t.classList.remove("show"),1800);
 }
-function saveMeta(){ localStorage.setItem("photo_meta_v4", JSON.stringify(db)); }
+
+async function confirmPopup({ title = "Potvrzení", text = "Opravdu pokračovat?", okText = "OK", cancelText = "Zrušit" } = {}) {
+  const overlay = document.getElementById("confirmOverlay");
+  const titleEl = document.getElementById("confirmTitle");
+  const textEl = document.getElementById("confirmText");
+  const okBtn = document.getElementById("confirmOk");
+  const cancelBtn = document.getElementById("confirmCancel");
+
+  titleEl.textContent = title;
+  textEl.textContent = text;
+  okBtn.textContent = okText;
+  cancelBtn.textContent = cancelText;
+
+  overlay.hidden = false;
+
+  return await new Promise((resolve) => {
+    const cleanup = () => {
+      overlay.hidden = true;
+      okBtn.removeEventListener("click", onOk);
+      cancelBtn.removeEventListener("click", onCancel);
+      overlay.removeEventListener("click", onOverlay);
+      document.removeEventListener("keydown", onKey);
+    };
+
+    const onOk = () => { cleanup(); resolve(true); };
+    const onCancel = () => { cleanup(); resolve(false); };
+    const onOverlay = (e) => { if (e.target === overlay) onCancel(); };
+    const onKey = (e) => { if (e.key === "Escape") onCancel(); };
+
+    okBtn.addEventListener("click", onOk);
+    cancelBtn.addEventListener("click", onCancel);
+    overlay.addEventListener("click", onOverlay);
+    document.addEventListener("keydown", onKey);
+
+    cancelBtn.focus();
+  });
+}
+
+
+function saveMeta(){ localStorage.setItem("photo_meta_v3", JSON.stringify(db)); }
 function loadMeta(){
-  const d = localStorage.getItem("photo_meta_v4");
+  const d = localStorage.getItem("photo_meta_v3");
   if (d) db = JSON.parse(d);
 }
 loadMeta();
+
+function initResponsive(){
+  const btn = document.getElementById("toggleTreeBtn");
+  if (!btn) return;
+  const mq = window.matchMedia("(max-width: 900px)");
+  const apply = () => {
+    btn.style.display = mq.matches ? "inline-flex" : "none";
+    // On desktop always show tree
+    const tree = document.getElementById("tree");
+    if (tree && !mq.matches) tree.style.display = "block";
+    if (tree && mq.matches && !currentProject && !currentFolder) tree.style.display = "block";
+  };
+  mq.addEventListener?.("change", apply);
+  window.addEventListener("resize", apply);
+  apply();
+}
 
 /** Helpers */
 function nowStr(){ return new Date().toLocaleString(); }
@@ -159,29 +251,76 @@ function escapeHtml(s){
 }
 
 /** Sidebar tree */
+
 function renderTree(){
   const t = document.getElementById("tree");
   t.innerHTML = "";
 
-  Object.values(db.projects).forEach(p => {
+  const projects = Object.values(db.projects);
+  if (!projects.length){
+    t.innerHTML = `<div style="color:#9ca3af;font-size:13px">Zatím žádné projekty.</div>`;
+    return;
+  }
+
+  projects.forEach(p => {
     const proj = document.createElement("div");
     proj.className = "project" + (p.id === currentProject ? " active" : "");
-    proj.textContent = p.name;
-    proj.onclick = () => openProject(p.id);
+    proj.innerHTML = `
+      <div class="tree-item">
+        <div class="tree-title">🏠 ${escapeHtml(p.name)}</div>
+        <button class="iconbtn" title="Smazat projekt" aria-label="Smazat projekt">🗑️</button>
+      </div>
+    `;
+    proj.onclick = () => { openProject(p.id); collapseTreeOnMobile(); };
+
+    // delete project button
+    proj.querySelector("button").onclick = (e) => {
+      e.stopPropagation();
+      deleteProject(p.id);
+    };
+
     t.appendChild(proj);
 
     Object.values(p.folders).forEach(f => {
       const fd = document.createElement("div");
       fd.className = "folder" + (currentFolder === f.id ? " active" : "");
-      // 🏠 emoji for folder label as requested
-      fd.textContent = "🏠 📁 " + f.name;
-      fd.onclick = (e) => { e.stopPropagation(); openFolder(p.id, f.id); };
+      fd.innerHTML = `
+        <div class="tree-item">
+          <div class="tree-title">📁 ${escapeHtml(f.name)}</div>
+          <button class="iconbtn" title="Smazat složku" aria-label="Smazat složku">🗑️</button>
+        </div>
+      `;
+      fd.onclick = (e) => { e.stopPropagation(); openFolder(p.id, f.id); collapseTreeOnMobile(); };
+
+      fd.querySelector("button").onclick = (e) => {
+        e.stopPropagation();
+        deleteFolder(p.id, f.id);
+      };
+
       t.appendChild(fd);
     });
   });
 }
 
+function collapseTreeOnMobile(){
+  // if toggle button is visible, we are on mobile layout
+  const btn = document.getElementById("toggleTreeBtn");
+  if (!btn) return;
+  const isMobile = getComputedStyle(btn).display !== "none";
+  if (!isMobile) return;
+
+  const tree = document.getElementById("tree");
+  if (tree) tree.style.display = "none";
+}
+
+function toggleTree(){
+  const tree = document.getElementById("tree");
+  if (!tree) return;
+  tree.style.display = (tree.style.display === "none") ? "block" : "none";
+}
+
 /** Project */
+
 function addProject(){
   const name = prompt("Název projektu:");
   if(!name) return;
@@ -192,7 +331,7 @@ function addProject(){
     created: nowStr(),
     technici: [],
     folders: {},
-    images: {}
+    images: {} // imageId -> {id, folderId, name, created}
   };
   saveMeta();
   renderTree();
@@ -208,15 +347,16 @@ function openProject(pid){
     <div class="card">
       <div class="row" style="justify-content:space-between">
         <div>
-          <h2 style="margin:0 0 6px">${escapeHtml(p.name)}</h2>
-          <div style="color:#6b7280;font-size:13px">Založeno: ${escapeHtml(p.created)}</div>
+          <h2 style="margin:0 0 6px">🏠 ${escapeHtml(p.name)}</h2>
+          <div style="color:#6b7280;font-size:13px">Založeno: ${p.created}</div>
         </div>
         <div class="row">
+          <button class=\"ghost\" onclick=\"deleteProject('${pid}')\">🗑️ Smazat projekt</button>
           <button class="primary" onclick="exportProjectSafe()">📦 Export (bez blokování Windows)</button>
-        </div>
+</div>
       </div>
       <div class="hint">
-        Používá systémové <b>Uložit jako…</b> (Edge/Chrome na Windows/Android).
+        Tip: Export ukládá ZIP bezpečně použije systémové <b>Uložit jako…</b> (Edge/Chrome na Windows).
       </div>
     </div>
 
@@ -271,6 +411,73 @@ function removeTech(idx){
   renderTech();
 }
 
+
+async function deleteProject(pid){
+  const p = db.projects[pid];
+  if (!p) return;
+
+  const ok = await confirmPopup({
+    title: "Smazat projekt",
+    text: `Opravdu chceš smazat projekt "${p.name}" včetně všech složek, chatu a fotek?`,
+    okText: "Smazat",
+    cancelText: "Zrušit"
+  });
+  if (!ok) return;
+
+  // delete blobs
+  const imageIds = Object.keys(p.images || {});
+  for (const id of imageIds){
+    try { await idbDel(id); } catch(e){ console.warn(e); }
+  }
+
+  delete db.projects[pid];
+
+  if (currentProject === pid){
+    currentProject = null;
+    currentFolder = null;
+    document.getElementById("content").innerHTML = `<h2>Vyber projekt nebo složku</h2>`;
+  }
+
+  saveMeta();
+  renderTree();
+  toast("🗑️ Projekt smazán");
+}
+
+async function deleteFolder(pid, fid){
+  const p = db.projects[pid];
+  const f = p?.folders?.[fid];
+  if (!p || !f) return;
+
+  const ok = await confirmPopup({
+    title: "Smazat složku",
+    text: `Opravdu chceš smazat složku "${f.name}" včetně chatu a fotek?`,
+    okText: "Smazat",
+    cancelText: "Zrušit"
+  });
+  if (!ok) return;
+
+  // delete images in this folder
+  const imgs = Object.values(p.images || {}).filter(i => i.folderId === fid);
+  for (const img of imgs){
+    try { await idbDel(img.id); } catch(e){ console.warn(e); }
+    delete p.images[img.id];
+  }
+
+  delete p.folders[fid];
+
+  if (currentProject === pid && currentFolder === fid){
+    currentFolder = null;
+    openProject(pid);
+  } else {
+    saveMeta();
+    renderTree();
+  }
+
+  saveMeta();
+  renderTree();
+  toast("🗑️ Složka smazána");
+}
+
 /** Folders */
 function addFolder(){
   if (!currentProject) return toast("Vyber projekt");
@@ -298,8 +505,9 @@ function openFolder(pid, fid){
       <div class="row" style="justify-content:space-between">
         <div>
           <div style="color:#6b7280;font-size:13px">${escapeHtml(p.name)}</div>
-          <h2 style="margin:2px 0 0">${escapeHtml(f.name)}</h2>
+          <h2 style="margin:2px 0 0">📁 ${escapeHtml(f.name)}</h2>
         </div>
+        <button class="ghost" onclick="deleteFolder(\'${pid}\',\'${fid}\')">🗑️ Smazat složku</button>
         <button class="ghost" onclick="openProject('${pid}')">← Zpět na projekt</button>
       </div>
     </div>
@@ -361,7 +569,7 @@ function renderChat(){
   c.scrollTop = c.scrollHeight;
 }
 
-/** Images */
+/** Images: store Blob in IndexedDB, metadata in localStorage */
 async function uploadImage(e){
   if(!currentFolder) return toast("Vyber složku");
   const file = e.target.files?.[0];
@@ -447,6 +655,7 @@ async function buildZipBlobForProject(projectId){
   const rootName = safeName(p.name) || "Projekt";
   const root = zip.folder(rootName);
 
+  // README with CRLF
   const photosCount = Object.keys(p.images).length;
   const tech = p.technici.length ? p.technici.join(", ") : "-";
   let readme = "";
@@ -469,6 +678,16 @@ async function buildZipBlobForProject(projectId){
 
   root.file("README.txt", readme);
 
+  // Ensure folder structure exists in the ZIP even if folders are empty.
+  // Some unzip tools won't show empty dirs unless a directory entry exists.
+  for (const f of Object.values(p.folders)){
+    const folderName = safeName(f.name) || "Složka";
+    // Create explicit dir entry (not just a folder handle)
+    root.folder(folderName);
+    root.file(folderName + "/", "", { dir: true });
+  }
+
+  // images in folders
   for (const meta of Object.values(p.images)){
     const folder = p.folders[meta.folderId];
     const folderName = folder ? safeName(folder.name) : "Nezarazeno";
@@ -482,12 +701,13 @@ async function buildZipBlobForProject(projectId){
   return await zip.generateAsync({ type: "blob", compression: "DEFLATE" });
 }
 
-/** Export: SAFE Save As (only button kept) */
+/** Export: SAFE (system Save As) */
 async function exportProjectSafe(){
   if(!currentProject) return;
 
+  // File System Access API available?
   if (!window.showSaveFilePicker) {
-    toast("Pro bezpečný export otevři v Chrome/Edge (Windows/Android).");
+    toast("Tento prohlížeč neumí bezpečné ukládání. Použij jiný prohlížeč (ideálně Chrome/Edge) nebo povol stahování ZIP.");
     return;
   }
 
@@ -509,6 +729,7 @@ async function exportProjectSafe(){
 
     toast("📦 Export uložen (bez blokování Windows)");
   } catch (err) {
+    // User cancelled or error
     if (String(err?.name || "").toLowerCase().includes("abort")) {
       toast("Uložení zrušeno");
       return;
@@ -518,8 +739,26 @@ async function exportProjectSafe(){
   }
 }
 
+
 /** init */
+initResponsive();
 renderTree();
+
+
 </script>
+
+  <!-- Confirm popup -->
+  <div id="confirmOverlay" class="confirm-overlay" hidden>
+    <div class="confirm-modal" role="dialog" aria-modal="true" aria-labelledby="confirmTitle">
+      <div class="confirm-title" id="confirmTitle">Potvrzení</div>
+      <div class="confirm-text" id="confirmText">Opravdu pokračovat?</div>
+      <div class="confirm-actions">
+        <button id="confirmCancel" type="button" class="secondary">Zrušit</button>
+        <button id="confirmOk" type="button" class="danger">Smazat</button>
+      </div>
+    </div>
+  </div>
+
 </body>
 </html>
+
