@@ -899,6 +899,8 @@ function renderFolderView(folder){
   const body = $("#viewBody");
 
   body.innerHTML = `
+  $("#folderCreated").textContent =
+  new Date(folder.createdAt || Date.now()).toLocaleString("cs-CZ");
     <div class="card">
       <h3>Technik a poznámky (složka)</h3>
       <div class="grid">
@@ -935,8 +937,9 @@ function renderFolderView(folder){
   $("#btnSaveFolderMeta").addEventListener("click", async () => {
     const tech = ($("#folderTech").value || "").trim();
     const notes = ($("#folderNotes").value || "").trim();
-    const updated = { ...folder, tech, notes };
-    await idbPut("folders", updated);
+   const updated = { ...folder, tech, notes, updatedAt: nowISO() };
+await idbPut("folders", updated);
+
     await refresh();
   });
 
@@ -1246,10 +1249,22 @@ async function exportSelectedProject(){
     const fName = sanitizeName(f.name);
     entries.push({ name: `${baseDir}${fName}/`, data: new Uint8Array(0), isDir:true, mtime: new Date() });
 
-    // uložit i folder meta do txt (volitelné, ale praktické)
-    const metaText = `Technik: ${f.tech || ""}\nPoznámky:\n${f.notes || ""}\n`;
-    const metaBytes = utf8Bytes(metaText);
-    entries.push({ name: `${baseDir}${fName}/_info.txt`, data: metaBytes, isDir:false, mtime: new Date() });
+const hasFolderMeta = (f.tech && f.tech.trim()) || (f.notes && f.notes.trim());
+if (hasFolderMeta){
+  const when = new Date().toLocaleString("cs-CZ");
+  const metaText =
+    `Čas exportu: ${when}\n` +
+    `Technik: ${(f.tech || "").trim()}\n\n` +
+    `Poznámky:\n${(f.notes || "").trim()}\n`;
+
+  entries.push({
+    name: `${baseDir}${fName}/_info.txt`,
+    data: utf8Bytes(metaText),
+    isDir:false,
+    mtime: new Date()
+  });
+}
+
   }
 
   for (const ph of photos){
@@ -1265,9 +1280,25 @@ async function exportSelectedProject(){
     entries.push({ name: path, data: arr, isDir:false, mtime: new Date(ph.createdAt || Date.now()) });
 
     // metadata per photo
-    const metaText = `Název: ${ph.label || ""}\nTechnik: ${ph.tech || ""}\nPoznámky:\n${ph.notes || ""}\n`;
-    const metaBytes = utf8Bytes(metaText);
-    entries.push({ name: `${baseDir}${folderName}/${base}_meta.txt`, data: metaBytes, isDir:false, mtime: new Date(ph.createdAt || Date.now()) });
+    const hasPhotoMeta =
+  (ph.tech && ph.tech.trim()) ||
+  (ph.notes && ph.notes.trim());
+
+if (hasPhotoMeta){
+  const when = new Date(ph.createdAt || Date.now()).toLocaleString("cs-CZ");
+  const metaText =
+    `Čas: ${when}\n` +
+    `Technik: ${(ph.tech || "").trim()}\n\n` +
+    `Poznámky:\n${(ph.notes || "").trim()}\n`;
+
+  entries.push({
+    name: `${baseDir}${folderName}/${base}_meta.txt`,
+    data: utf8Bytes(metaText),
+    isDir:false,
+    mtime: new Date(ph.createdAt || Date.now())
+  });
+}
+
   }
 
    // --- ZIP BUILD (Windows Explorer friendly) ---
