@@ -27,7 +27,7 @@
       background:var(--bg);
       color:var(--text);
       font: 14px/1.35 system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif;
-      overflow:hidden; /* 🔒 fix screen */
+      overflow:hidden;
       overscroll-behavior: none;
       touch-action: manipulation;
     }
@@ -39,7 +39,6 @@
       padding: env(safe-area-inset-top) 0 env(safe-area-inset-bottom) 0;
     }
 
-    /* Header (fixed area) */
     .topbar{
       flex:0 0 auto;
       display:flex;
@@ -86,7 +85,7 @@
       color:var(--text);
       border-radius:12px;
       padding:10px 12px;
-      min-height:44px; /* mobile-friendly */
+      min-height:44px;
       font-weight:650;
       cursor:pointer;
     }
@@ -95,7 +94,6 @@
     button.danger{ border-color: rgba(255,77,77,.35); background: rgba(255,77,77,.12); }
     button.ok{ border-color: rgba(73,209,122,.35); background: rgba(73,209,122,.12); }
 
-    /* Layout */
     .shell{
       flex:1 1 auto;
       min-height:0;
@@ -133,7 +131,7 @@
     .sidebar .list{
       flex:1 1 auto;
       min-height:0;
-      overflow:auto; /* only inner scroll in sidebar */
+      overflow:auto;
       -webkit-overflow-scrolling: touch;
       padding:8px;
     }
@@ -159,9 +157,7 @@
       gap:10px;
       min-width:0;
     }
-    .content .hdr .left{
-      min-width:0;
-    }
+    .content .hdr .left{ min-width:0; }
     .content .hdr .title{
       font-size:16px;
       font-weight:850;
@@ -178,12 +174,11 @@
     .content .body{
       flex:1 1 auto;
       min-height:0;
-      overflow:auto; /* ✅ single main scroll */
+      overflow:auto;
       -webkit-overflow-scrolling: touch;
       padding:12px;
     }
 
-    /* Tree items */
     .row{
       display:flex;
       align-items:center;
@@ -233,7 +228,6 @@
       font-weight:750;
     }
 
-    /* Inline form */
     .card{
       border:1px solid var(--border);
       border-radius: var(--radius);
@@ -252,7 +246,7 @@
       gap:10px;
       align-items:center;
     }
-    input[type="text"]{
+    input[type="text"], textarea{
       width:100%;
       min-height:44px;
       padding:10px 12px;
@@ -261,10 +255,11 @@
       background: rgba(255,255,255,.05);
       color:var(--text);
       outline:none;
+      font: inherit;
     }
-    input[type="text"]::placeholder{ color: rgba(255,255,255,.35); }
+    textarea{ min-height:90px; resize:vertical; }
+    input[type="text"]::placeholder, textarea::placeholder{ color: rgba(255,255,255,.35); }
 
-    /* File button label – must be physically clickable on mobile */
     .file-btn{
       position:relative;
       display:inline-flex;
@@ -281,32 +276,32 @@
       cursor:pointer;
       white-space:nowrap;
     }
-    .file-btn input[type="file"]{
-      position:absolute;
-      inset:0;
-      opacity:0;
-      cursor:pointer;
-    }
-
     .toolbar{
       display:flex;
       flex-wrap:wrap;
       gap:8px;
       align-items:center;
     }
+    .hidden-file{
+      position:absolute;
+      left:-9999px;
+      width:1px;
+      height:1px;
+      opacity:0;
+    }
 
-    /* Gallery */
+    /* Thumbnails smaller */
     .photos{
       display:grid;
-      grid-template-columns: repeat(2, minmax(0, 1fr));
-      gap:10px;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap:8px;
     }
     @media (min-width: 760px){
-      .photos{ grid-template-columns: repeat(4, minmax(0, 1fr)); }
+      .photos{ grid-template-columns: repeat(6, minmax(0, 1fr)); }
     }
     .ph{
       border:1px solid var(--border);
-      border-radius: 14px;
+      border-radius: 12px;
       overflow:hidden;
       background: rgba(255,255,255,.03);
       position:relative;
@@ -318,19 +313,18 @@
       object-fit:cover;
       display:block;
     }
-    .ph .x{
+    .ph .x, .ph .edit{
       position:absolute;
-      top:8px;
-      right:8px;
       border-radius:999px;
-      min-height:34px;
-      padding:6px 10px;
+      min-height:30px;
+      padding:5px 9px;
       background: rgba(0,0,0,.45);
       border:1px solid rgba(255,255,255,.18);
       font-weight:900;
     }
+    .ph .x{ top:6px; right:6px; }
+    .ph .edit{ bottom:6px; right:6px; }
 
-    /* Landing */
     .landing{
       display:flex;
       flex-direction:column;
@@ -350,19 +344,17 @@
       color: rgba(255,255,255,.55);
     }
 
-    /* Mobile: same flow, sidebar collapsible */
     @media (max-width: 900px){
       .shell{ flex-direction:column; }
       .sidebar{ width:100%; max-width:none; }
       .sidebar.collapsed .list{ display:none; }
     }
 
-    /* ✅ PC: hide top-right bar */
+    /* PC: hide top-right bar */
     @media (min-width: 901px){
       .top-actions{ display:none; }
     }
 
-    /* Confirm modal */
     .confirm-overlay[hidden]{ display:none; }
     .confirm-overlay{
       position:fixed;
@@ -386,6 +378,31 @@
     .confirm-title{ font-size:16px; font-weight:950; margin-bottom:8px; }
     .confirm-text{ color: rgba(255,255,255,.85); margin-bottom:14px; }
     .confirm-actions{ display:flex; gap:10px; justify-content:flex-end; }
+
+    /* Photo meta modal */
+    .modal-overlay[hidden]{ display:none; }
+    .modal-overlay{
+      position:fixed;
+      inset:0;
+      display:flex;
+      align-items:center;
+      justify-content:center;
+      padding:16px;
+      background: rgba(0,0,0,.55);
+      z-index:10000;
+    }
+    .modal{
+      width:min(560px, 100%);
+      border-radius: 16px;
+      background: var(--panel);
+      border:1px solid var(--border);
+      box-shadow: var(--shadow);
+      padding:16px;
+    }
+    .modal h3{ margin:0 0 10px 0; font-size:16px; font-weight:950; }
+    .modal .row2{ display:flex; gap:10px; flex-wrap:wrap; }
+    .modal .row2 > *{ flex:1 1 220px; }
+    .modal .actions{ display:flex; gap:10px; justify-content:flex-end; margin-top:12px; }
   </style>
 </head>
 
@@ -398,7 +415,7 @@
     </div>
     <div class="top-actions">
       <button class="secondary" id="btnToggleSidebar" title="Projekty">☰</button>
-      <button class="ok" id="btnExport" title="Export projektu">⬇︎ Export</button>
+      <!-- Export z topbaru pryč – export jen u projektu -->
     </div>
   </div>
 
@@ -436,6 +453,31 @@
   </div>
 </div>
 
+<!-- Photo meta modal -->
+<div id="photoOverlay" class="modal-overlay" hidden>
+  <div class="modal" role="dialog" aria-modal="true">
+    <h3 id="photoModalTitle">Popis fotky</h3>
+    <div class="row2">
+      <div>
+        <div style="color:var(--muted);font-size:12px;margin-bottom:6px">Název fotky</div>
+        <input type="text" id="photoName" placeholder="Např. Kuchyně - detail…" />
+      </div>
+      <div>
+        <div style="color:var(--muted);font-size:12px;margin-bottom:6px">Technik</div>
+        <input type="text" id="photoTech" placeholder="Např. Jakub / Petr…" />
+      </div>
+    </div>
+    <div style="margin-top:10px">
+      <div style="color:var(--muted);font-size:12px;margin-bottom:6px">Poznámky</div>
+      <textarea id="photoNotes" placeholder="Krátký popis / co je potřeba udělat…"></textarea>
+    </div>
+    <div class="actions">
+      <button type="button" id="photoCancel" class="secondary">Zrušit</button>
+      <button type="button" id="photoSave" class="ok">Uložit</button>
+    </div>
+  </div>
+</div>
+
 <script>
 /* =========================
    Helpers
@@ -451,6 +493,14 @@ function sanitizeName(name){
     .replace(/[\\/:*?"<>|]/g, "_")
     .replace(/\s+/g, " ")
     .slice(0, 80) || "Bez názvu";
+}
+function escapeHtml(s){
+  return String(s || "")
+    .replaceAll("&","&amp;")
+    .replaceAll("<","&lt;")
+    .replaceAll(">","&gt;")
+    .replaceAll('"',"&quot;")
+    .replaceAll("'","&#039;");
 }
 
 async function confirmPopup({ title="Potvrzení", text="Opravdu?", okText="OK", cancelText="Zrušit" } = {}){
@@ -500,20 +550,29 @@ function downloadBlob(blob, filename){
   setTimeout(() => URL.revokeObjectURL(url), 1000);
 }
 
-function escapeHtml(s){
-  return String(s || "")
-    .replaceAll("&","&amp;")
-    .replaceAll("<","&lt;")
-    .replaceAll(">","&gt;")
-    .replaceAll('"',"&quot;")
-    .replaceAll("'","&#039;");
+function extFromMimeOrName(file){
+  const name = file?.name || "";
+  const dot = name.lastIndexOf(".");
+  if (dot > -1 && dot < name.length-1) return name.slice(dot+1).toLowerCase();
+  const t = (file?.type || "").toLowerCase();
+  if (t.includes("jpeg")) return "jpg";
+  if (t.includes("png")) return "png";
+  if (t.includes("webp")) return "webp";
+  if (t.includes("heic")) return "heic";
+  return "jpg";
+}
+function baseNameNoExt(filename){
+  const n = filename || "";
+  const dot = n.lastIndexOf(".");
+  if (dot <= 0) return n || "";
+  return n.slice(0, dot);
 }
 
 /* =========================
    IndexedDB
 ========================= */
 const DB_NAME = "work_app_db";
-const DB_VER = 1;
+const DB_VER = 2; // bump for folder meta fields
 
 function idbOpen(){
   return new Promise((resolve, reject) => {
@@ -535,6 +594,7 @@ function idbOpen(){
         s.createIndex("folderId", "folderId");
         s.createIndex("createdAt", "createdAt");
       }
+      // no schema changes needed beyond version bump; objects can have extra fields.
     };
     req.onsuccess = () => resolve(req.result);
     req.onerror = () => reject(req.error);
@@ -556,15 +616,10 @@ async function idbTx(storeNames, mode, fn){
   });
 }
 
-async function idbGetAll(storeName, indexName=null, key=null){
+async function idbGetAll(storeName){
   return idbTx(storeName, "readonly", async ([s]) => {
     return new Promise((resolve, reject) => {
-      let req;
-      if (indexName){
-        req = s.index(indexName).getAll(key);
-      } else {
-        req = s.getAll();
-      }
+      const req = s.getAll();
       req.onsuccess = () => resolve(req.result || []);
       req.onerror = () => reject(req.error);
     });
@@ -601,9 +656,55 @@ const state = {
   selectedProjectId: null,
   selectedFolderId: null,
 };
-
 function uid(){
   return (crypto && crypto.randomUUID) ? crypto.randomUUID() : (Date.now()+"_"+Math.random().toString(16).slice(2));
+}
+
+/* =========================
+   Photo modal (name/tech/notes)
+========================= */
+const photoModal = {
+  overlay: $("#photoOverlay"),
+  title: $("#photoModalTitle"),
+  name: $("#photoName"),
+  tech: $("#photoTech"),
+  notes: $("#photoNotes"),
+  cancel: $("#photoCancel"),
+  save: $("#photoSave"),
+  _resolver: null,
+  _mode: "create", // create | edit
+};
+
+function openPhotoMetaModal({title="Popis fotky", preset={name:"", tech:"", notes:""}}){
+  photoModal.title.textContent = title;
+  photoModal.name.value = preset.name || "";
+  photoModal.tech.value = preset.tech || "";
+  photoModal.notes.value = preset.notes || "";
+  photoModal.overlay.hidden = false;
+  photoModal.name.focus();
+
+  return new Promise((resolve) => {
+    const cleanup = () => {
+      photoModal.overlay.hidden = true;
+      photoModal.cancel.removeEventListener("click", onCancel);
+      photoModal.save.removeEventListener("click", onSave);
+      document.removeEventListener("keydown", onKey);
+      photoModal._resolver = null;
+    };
+    const onCancel = () => { cleanup(); resolve(null); };
+    const onSave = () => {
+      const name = (photoModal.name.value || "").trim();
+      const tech = (photoModal.tech.value || "").trim();
+      const notes = (photoModal.notes.value || "").trim();
+      cleanup();
+      resolve({ name, tech, notes });
+    };
+    const onKey = (e) => { if (e.key === "Escape") onCancel(); };
+
+    photoModal.cancel.addEventListener("click", onCancel);
+    photoModal.save.addEventListener("click", onSave);
+    document.addEventListener("keydown", onKey);
+  });
 }
 
 /* =========================
@@ -621,7 +722,6 @@ function renderTree(){
   for (const p of state.projects){
     const pRow = document.createElement("div");
     pRow.className = "row" + (p.id === state.selectedProjectId && !state.selectedFolderId ? " active" : "");
-    // ✅ žádný 🏠 ve stromu (aby nebyl 2×)
     pRow.innerHTML = `
       <div class="l">
         <div class="name">${escapeHtml(p.name)}</div>
@@ -649,7 +749,7 @@ function renderTree(){
           <div class="name">${escapeHtml(f.name)}</div>
         </div>
         <div class="meta">
-          <button class="mini secondary" title="Přejmenovat">✏️</button>
+          <button class="mini secondary" title="Přejmenovat složku">✏️</button>
           <button class="mini danger" title="Smazat složku">🗑️</button>
         </div>
       `;
@@ -680,11 +780,17 @@ function setHeader(title, sub){
   $("#viewTitle").textContent = title;
   $("#viewSub").textContent = sub || "";
 }
-
 function setActions(nodes){
   const a = $("#viewActions");
   a.innerHTML = "";
   for (const n of (nodes || [])) a.appendChild(n);
+}
+function makeActionButton(text, cls, onClick){
+  const b = document.createElement("button");
+  if (cls) b.className = cls;
+  b.textContent = text;
+  b.addEventListener("click", onClick);
+  return b;
 }
 
 function renderLanding(){
@@ -711,16 +817,7 @@ function renderLanding(){
   });
 }
 
-function makeActionButton(text, cls, onClick){
-  const b = document.createElement("button");
-  b.className = cls || "";
-  b.textContent = text;
-  b.addEventListener("click", onClick);
-  return b;
-}
-
 function renderProjectView(project){
-  // ✅ 🏠 jen u názvu projektu (ne ve stromu)
   setHeader(`🏠 ${project.name}`, "Projekt");
   const body = $("#viewBody");
   body.innerHTML = `
@@ -729,6 +826,9 @@ function renderProjectView(project){
       <div class="grid">
         <input id="inpFolderName" type="text" placeholder="Název složky…" />
         <button class="ok" id="btnCreateFolder">Vytvořit</button>
+      </div>
+      <div id="folderError" style="margin-top:8px;color:rgba(255,77,77,.95);font-size:12px;display:none">
+        Vyplň název složky.
       </div>
     </div>
 
@@ -767,17 +867,27 @@ function renderProjectView(project){
     }
   }
 
-  $("#btnCreateFolder").addEventListener("click", async () => {
-    const inp = $("#inpFolderName");
-    const name = (inp.value || "").trim();
-    await createFolder(project.id, name || "Nová složka");
+  const inp = $("#inpFolderName");
+  const err = $("#folderError");
 
-    // ✅ zůstaneš v projektu, vyčistí input
+  $("#btnCreateFolder").addEventListener("click", async () => {
+    const name = (inp.value || "").trim();
+    if (!name){
+      err.style.display = "block";
+      inp.focus();
+      return;
+    }
+    err.style.display = "none";
+    await createFolder(project.id, name);
     inp.value = "";
     inp.focus();
   });
 
-  // ✅ akce nahoře vpravo v content headeru
+  inp.addEventListener("input", () => {
+    if ((inp.value || "").trim()) err.style.display = "none";
+  });
+
+  // ✅ Export jen u projektu
   const exportBtn = makeActionButton("⬇︎ Export", "ok", exportSelectedProject);
   const delBtn = makeActionButton("🗑️ Smazat projekt", "danger", () => uiDeleteProject(project.id));
   setActions([exportBtn, delBtn]);
@@ -785,24 +895,36 @@ function renderProjectView(project){
 
 function renderFolderView(folder){
   const project = state.projects.find(p => p.id === folder.projectId);
+
   setHeader(`📁 ${folder.name}`, project ? `Projekt: 🏠 ${project.name}` : "Složka");
   const body = $("#viewBody");
 
-  // ✅ stabilní mobilní upload: Galerie + Foto zvlášť
   body.innerHTML = `
+    <div class="card">
+      <h3>Technik a poznámky (složka)</h3>
+      <div class="grid">
+        <input id="folderTech" type="text" placeholder="Technik (např. Jakub)..." value="${escapeHtml(folder.tech || "")}" />
+        <button class="ok" id="btnSaveFolderMeta">Uložit</button>
+      </div>
+      <div style="margin-top:10px">
+        <textarea id="folderNotes" placeholder="Poznámky ke složce...">${escapeHtml(folder.notes || "")}</textarea>
+      </div>
+      <div style="margin-top:8px;color:var(--muted);font-size:12px">
+        Tyto údaje jsou pro celou složku a zůstávají uložené.
+      </div>
+    </div>
+
     <div class="card">
       <h3>Přidat fotky</h3>
       <div class="toolbar">
-        <label class="file-btn" title="Vybrat z galerie">
-          🖼️ Galerie
-          <input id="fileGallery" type="file" accept="image/*" multiple />
-        </label>
-        <label class="file-btn" title="Vyfotit">
-          📷 Foto
-          <input id="fileCamera" type="file" accept="image/*" capture="environment" />
-        </label>
+        <button class="file-btn" type="button" id="btnPickGallery">🖼️ Galerie</button>
+        <button class="file-btn" type="button" id="btnPickCamera">📷 Foto</button>
+
+        <input id="fileGallery" class="hidden-file" type="file" accept="image/*" multiple />
+        <input id="fileCamera" class="hidden-file" type="file" accept="image/*" capture="environment" />
+
         <div style="color:var(--muted);font-size:12px">
-          Galerie umí více fotek. Foto otevře kameru.
+          Foto po vyfocení otevře rovnou popis.
         </div>
       </div>
     </div>
@@ -813,34 +935,50 @@ function renderFolderView(folder){
     </div>
   `;
 
-  const fileGallery = $("#fileGallery");
-  const fileCamera = $("#fileCamera");
+  $("#btnSaveFolderMeta").addEventListener("click", async () => {
+    const tech = ($("#folderTech").value || "").trim();
+    const notes = ($("#folderNotes").value || "").trim();
+    const updated = { ...folder, tech, notes };
+    await idbPut("folders", updated);
+    await refresh();
+  });
 
+  const fileGallery = $("#fileGallery");
+  const fileCamera  = $("#fileCamera");
+
+  $("#btnPickGallery").addEventListener("click", () => fileGallery.click());
+  $("#btnPickCamera").addEventListener("click", () => fileCamera.click());
+
+  // Galerie: uloží, popis lze doplnit přes "Upravit" na thumbnail
   fileGallery.addEventListener("change", async (e) => {
     const files = Array.from(e.target.files || []);
     if (!files.length) return;
-    await addPhotosToFolder(folder.id, files);
+    await addPhotosToFolder(folder.id, files, { askMeta:false });
     fileGallery.value = "";
   });
 
+  // Kamera: po jedné + hned popis
   fileCamera.addEventListener("change", async (e) => {
     const files = Array.from(e.target.files || []);
     if (!files.length) return;
-    await addPhotosToFolder(folder.id, files);
+    // většinou 1 soubor
+    await addPhotosToFolder(folder.id, files, { askMeta:true });
     fileCamera.value = "";
   });
 
   renderPhotos(folder.id);
 
-  const exportBtn = makeActionButton("⬇︎ Export", "ok", exportSelectedProject);
   const renameBtn = makeActionButton("✏️ Přejmenovat složku", "secondary", () => uiRenameFolder(folder.id));
   const delFolderBtn = makeActionButton("🗑️ Smazat složku", "danger", () => uiDeleteFolder(folder.id));
-  setActions([exportBtn, renameBtn, delFolderBtn]);
+  // ✅ export pryč ze složky
+  setActions([renameBtn, delFolderBtn]);
 }
 
 function renderPhotos(folderId){
   const wrap = $("#photos");
-  const photos = state.photos.filter(p => p.folderId === folderId).sort((a,b)=> (a.createdAt||"").localeCompare(b.createdAt||""));
+  const photos = state.photos
+    .filter(p => p.folderId === folderId)
+    .sort((a,b)=> (a.createdAt||"").localeCompare(b.createdAt||""));
 
   if (!photos.length){
     wrap.innerHTML = `<div style="color:var(--muted)">Zatím žádné fotky.</div>`;
@@ -851,10 +989,11 @@ function renderPhotos(folderId){
   for (const ph of photos){
     const card = document.createElement("div");
     card.className = "ph";
+
     const img = document.createElement("img");
     const url = URL.createObjectURL(ph.blob);
     img.src = url;
-    img.alt = ph.filename || "foto";
+    img.alt = ph.label || ph.filename || "foto";
     img.onload = () => URL.revokeObjectURL(url);
 
     const del = document.createElement("button");
@@ -864,7 +1003,7 @@ function renderPhotos(folderId){
     del.addEventListener("click", async () => {
       const ok = await confirmPopup({
         title: "Smazat fotku",
-        text: `Opravdu chceš smazat „${ph.filename}“?`,
+        text: `Opravdu chceš smazat „${ph.label || ph.filename}“?`,
         okText: "Smazat",
         cancelText: "Zrušit"
       });
@@ -872,8 +1011,17 @@ function renderPhotos(folderId){
       await deletePhoto(ph.id);
     });
 
+    const edit = document.createElement("button");
+    edit.className = "edit";
+    edit.textContent = "✎";
+    edit.title = "Upravit popis";
+    edit.addEventListener("click", async () => {
+      await uiEditPhotoMeta(ph.id);
+    });
+
     card.appendChild(img);
     card.appendChild(del);
+    card.appendChild(edit);
     wrap.appendChild(card);
   }
 }
@@ -944,14 +1092,12 @@ async function createProject(name){
   if (isMobile()) $("#sidebar").classList.add("collapsed");
 }
 
-// ✅ FIX: po vytvoření složky zůstat v projektu
+// po vytvoření složky zůstat v projektu
 async function createFolder(projectId, name){
-  const f = { id: uid(), projectId, name: name.trim(), createdAt: nowISO() };
+  const f = { id: uid(), projectId, name: name.trim(), createdAt: nowISO(), tech:"", notes:"" };
   await idbPut("folders", f);
-
   state.selectedProjectId = projectId;
   state.selectedFolderId = null;
-
   await refresh();
 }
 
@@ -965,24 +1111,82 @@ async function uiRenameFolder(folderId){
   await refresh();
 }
 
-async function addPhotosToFolder(folderId, files){
+async function uiEditPhotoMeta(photoId){
+  const ph = state.photos.find(x => x.id === photoId);
+  if (!ph) return;
+
+  const preset = {
+    name: ph.label || baseNameNoExt(ph.filename) || "",
+    tech: ph.tech || "",
+    notes: ph.notes || ""
+  };
+
+  const res = await openPhotoMetaModal({
+    title: "Upravit popis fotky",
+    preset
+  });
+  if (!res) return;
+
+  const ext = extFromMimeOrName({ name: ph.filename, type: ph.type });
+  const clean = sanitizeName(res.name || preset.name || "foto");
+  const filename = clean ? `${clean}.${ext}` : ph.filename;
+
+  const updated = {
+    ...ph,
+    label: res.name || ph.label || "",
+    tech: res.tech || "",
+    notes: res.notes || "",
+    filename
+  };
+
+  await idbPut("photos", updated);
+  await refresh();
+}
+
+async function addPhotosToFolder(folderId, files, { askMeta=false } = {}){
   const folder = state.folders.find(f => f.id === folderId);
   if (!folder) return;
   const projectId = folder.projectId;
 
   for (const file of files){
     if (!file.type.startsWith("image/")) continue;
+
+    let meta = null;
+    if (askMeta){
+      const defaultName = baseNameNoExt(file.name) || "foto";
+      meta = await openPhotoMetaModal({
+        title: "Popis fotky",
+        preset: { name: defaultName, tech: folder.tech || "", notes: "" }
+      });
+      if (meta === null){
+        // zrušeno – fotku neukládat
+        continue;
+      }
+      // pokud prázdné jméno, vezmi default (ale povolíme i prázdné – pak použijeme "foto_...")
+      if (!meta.name.trim()) meta.name = defaultName;
+    }
+
+    const ext = extFromMimeOrName(file);
+    const label = meta?.name?.trim() || "";
+    const safeBase = label ? sanitizeName(label) : sanitizeName(baseNameNoExt(file.name) || `foto_${Date.now()}`);
+    const filename = `${safeBase}.${ext}`;
+
     const rec = {
       id: uid(),
       projectId,
       folderId,
-      filename: file.name || `foto_${Date.now()}.jpg`,
+      filename,
       type: file.type || "image/jpeg",
       createdAt: nowISO(),
       blob: file,
+      // metadata
+      label: label || safeBase,
+      tech: meta?.tech?.trim() || "",
+      notes: meta?.notes?.trim() || ""
     };
     await idbPut("photos", rec);
   }
+
   await refresh();
 }
 
@@ -1003,9 +1207,8 @@ async function uiDeleteFolder(folderId){
   if (!ok) return;
 
   const photos = state.photos.filter(p => p.folderId === folderId);
-  for (const ph of photos){
-    await idbDel("photos", ph.id);
-  }
+  for (const ph of photos) await idbDel("photos", ph.id);
+
   await idbDel("folders", folderId);
   state.selectedFolderId = null;
   await refresh();
@@ -1062,10 +1265,7 @@ function crc32(buf){
   }
   return (c ^ 0xFFFFFFFF) >>> 0;
 }
-
-function utf8Bytes(str){
-  return new TextEncoder().encode(str);
-}
+function utf8Bytes(str){ return new TextEncoder().encode(str); }
 
 function msDosTime(date){
   const d = date;
@@ -1100,16 +1300,29 @@ async function exportSelectedProject(){
   for (const f of folders){
     const fName = sanitizeName(f.name);
     entries.push({ name: `${baseDir}${fName}/`, data: new Uint8Array(0), isDir:true, mtime: new Date() });
+
+    // uložit i folder meta do txt (volitelné, ale praktické)
+    const metaText = `Technik: ${f.tech || ""}\nPoznámky:\n${f.notes || ""}\n`;
+    const metaBytes = utf8Bytes(metaText);
+    entries.push({ name: `${baseDir}${fName}/_info.txt`, data: metaBytes, isDir:false, mtime: new Date() });
   }
 
   for (const ph of photos){
     const folder = folders.find(f => f.id === ph.folderId);
     const folderName = folder ? sanitizeName(folder.name) : "Nezarazene";
-    const fileName = sanitizeName(ph.filename || "foto.jpg");
+
+    const ext = extFromMimeOrName({ name: ph.filename, type: ph.type });
+    const base = sanitizeName(ph.label || baseNameNoExt(ph.filename) || "foto");
+    const fileName = `${base}.${ext}`;
     const path = `${baseDir}${folderName}/${fileName}`;
 
     const arr = new Uint8Array(await ph.blob.arrayBuffer());
     entries.push({ name: path, data: arr, isDir:false, mtime: new Date(ph.createdAt || Date.now()) });
+
+    // metadata per photo
+    const metaText = `Název: ${ph.label || ""}\nTechnik: ${ph.tech || ""}\nPoznámky:\n${ph.notes || ""}\n`;
+    const metaBytes = utf8Bytes(metaText);
+    entries.push({ name: `${baseDir}${folderName}/${base}_meta.txt`, data: metaBytes, isDir:false, mtime: new Date(ph.createdAt || Date.now()) });
   }
 
   const outParts = [];
@@ -1123,8 +1336,8 @@ async function exportSelectedProject(){
     const crc = crc32(data);
     const compSize = data.length;
     const uncompSize = data.length;
-    const gpFlag = 0x0800; // UTF-8
-    const method = 0; // stored
+    const gpFlag = 0x0800;
+    const method = 0;
     const extAttr = e.isDir ? 0x10 : 0x00;
 
     const local = [
@@ -1207,10 +1420,6 @@ $("#btnNewProject").addEventListener("click", async () => {
   const name = prompt("Název projektu:");
   if (!name) return;
   await createProject(name);
-});
-
-$("#btnExport").addEventListener("click", async () => {
-  await exportSelectedProject();
 });
 
 /* =========================
