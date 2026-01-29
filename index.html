@@ -412,10 +412,10 @@
       <div class="title">Work App</div>
       <div class="chip" id="chipStatus">Offline • Lokálně</div>
     </div>
-<div class="top-actions">
-  <button class="secondary" id="btnToggleSidebar" title="Projekty">☰</button>
-  <button class="ok mini" id="btnNewProjectTop" title="Nový projekt">＋</button>
-</div>
+    <div class="top-actions">
+      <button class="secondary" id="btnToggleSidebar" title="Projekty">☰</button>
+      <!-- Export z topbaru pryč – export jen u projektu -->
+    </div>
   </div>
 
   <div class="shell">
@@ -737,37 +737,37 @@ function renderTree(){
     });
     el.appendChild(pRow);
 
-// ✅ Složky v sidebaru ukazuj jen na PC
-if (!isMobile()){
-  const folders = state.folders.filter(f => f.projectId === p.id);
-  for (const f of folders){
-    const fRow = document.createElement("div");
-    fRow.className = "row" + (f.id === state.selectedFolderId ? " active" : "");
-    fRow.style.marginLeft = "14px";
-    fRow.innerHTML = `
-      <div class="l">
-        <span class="emoji">📁</span>
-        <div class="name">${escapeHtml(f.name)}</div>
-      </div>
-      <div class="meta">
-        <button class="mini secondary" title="Přejmenovat složku">✏️</button>
-        <button class="mini danger" title="Smazat složku">🗑️</button>
-      </div>
-    `;
+    const folders = state.folders.filter(f => f.projectId === p.id);
+    for (const f of folders){
+      const fRow = document.createElement("div");
+      fRow.className = "row" + (f.id === state.selectedFolderId ? " active" : "");
+      fRow.style.marginLeft = "14px";
+      fRow.innerHTML = `
+        <div class="l">
+          <span class="emoji">📁</span>
+          <div class="name">${escapeHtml(f.name)}</div>
+        </div>
+        <div class="meta">
+          <button class="mini secondary" title="Přejmenovat složku">✏️</button>
+          <button class="mini danger" title="Smazat složku">🗑️</button>
+        </div>
+      `;
+      fRow.addEventListener("click", () => {
+        selectFolder(f.id);
+        if (isMobile()) $("#sidebar").classList.add("collapsed");
+      });
 
-    fRow.addEventListener("click", () => {
-      selectFolder(f.id);
-      if (isMobile()) $("#sidebar").classList.add("collapsed");
-    });
+      const [renameBtn, delBtn] = fRow.querySelectorAll("button");
+      renameBtn.addEventListener("click", async (e) => {
+        e.stopPropagation();
+        await uiRenameFolder(f.id);
+      });
+      delBtn.addEventListener("click", async (e) => {
+        e.stopPropagation();
+        await uiDeleteFolder(f.id);
+      });
 
-    const [renameBtn, delBtn] = fRow.querySelectorAll("button");
-    renameBtn.addEventListener("click", async (e) => { e.stopPropagation(); await uiRenameFolder(f.id); });
-    delBtn.addEventListener("click", async (e) => { e.stopPropagation(); await uiDeleteFolder(f.id); });
-
-    el.appendChild(fRow);
-  }
-}
-
+      el.appendChild(fRow);
     }
   }
 }
@@ -1257,51 +1257,30 @@ async function exportSelectedProject(){
   const baseDir = `${pName}/`;
 
   const folders = state.folders.filter(f => f.projectId === pid);
-  const photos = state.photos.filter(ph => ph.projectId === pid);
+  const photos  = state.photos.filter(ph => ph.projectId === pid);
 
   const entries = [];
-  entries.push({ name: baseDir, data: new Uint8Array(0), isDir:true, mtime: new Date() });
-  // Projekt info hned v rootu projektu
-const totalPhotos = photos.length;
-const created = new Date(project.createdAt || Date.now()).toLocaleString("cs-CZ");
-const techs = (project.techs || "").trim();
 
-const infoText =
-  `Projekt: ${project.name}\n` +
-  `Založeno: ${created}\n` +
-  `Počet fotek: ${totalPhotos}\n` +
-  `Technici: ${techs || "—"}\n`;
-
-entries.push({
-  name: `${baseDir}_projekt_info.txt`,
-  data: utf8Bytes(infoText),
-  isDir: false,
-  mtime: new Date()
-});
-
-
-  for (const f of folders){
-    const fName = sanitizeName(f.name);
-    entries.push({ name: `${baseDir}${fName}/`, data: new Uint8Array(0), isDir:true, mtime: new Date() });
-
-const hasFolderMeta = (f.tech && f.tech.trim()) || (f.notes && f.notes.trim());
-if (hasFolderMeta){
-  const when = new Date().toLocaleString("cs-CZ");
-  const metaText =
-    `Čas exportu: ${when}\n` +
-    `Technik: ${(f.tech || "").trim()}\n\n` +
-    `Poznámky:\n${(f.notes || "").trim()}\n`;
-
+  // root dir
   entries.push({
-    name: `${baseDir}${fName}/_info.txt`,
-    data: utf8Bytes(metaText),
-    isDir:false,
+    name: baseDir,
+    data: new Uint8Array(0),
+    isDir: true,
     mtime: new Date()
   });
-}
 
+  // folder dirs (i prázdné)
+  for (const f of folders){
+    const fName = sanitizeName(f.name);
+    entries.push({
+      name: `${baseDir}${fName}/`,
+      data: new Uint8Array(0),
+      isDir: true,
+      mtime: new Date()
+    });
   }
 
+  // photos
   for (const ph of photos){
     const folder = folders.find(f => f.id === ph.folderId);
     const folderName = folder ? sanitizeName(folder.name) : "Nezarazene";
@@ -1309,79 +1288,59 @@ if (hasFolderMeta){
     const ext = extFromMimeOrName({ name: ph.filename, type: ph.type });
     const base = sanitizeName(ph.label || baseNameNoExt(ph.filename) || "foto");
     const fileName = `${base}.${ext}`;
+
     const path = `${baseDir}${folderName}/${fileName}`;
+    const data = new Uint8Array(await ph.blob.arrayBuffer());
 
-    const arr = new Uint8Array(await ph.blob.arrayBuffer());
-    entries.push({ name: path, data: arr, isDir:false, mtime: new Date(ph.createdAt || Date.now()) });
-
-    // metadata per photo
-    const hasPhotoMeta =
-  (ph.tech && ph.tech.trim()) ||
-  (ph.notes && ph.notes.trim());
-
-if (hasPhotoMeta){
-  const when = new Date(ph.createdAt || Date.now()).toLocaleString("cs-CZ");
-  const metaText =
-    `Čas: ${when}\n` +
-    `Technik: ${(ph.tech || "").trim()}\n\n` +
-    `Poznámky:\n${(ph.notes || "").trim()}\n`;
-
-  entries.push({
-    name: `${baseDir}${folderName}/${base}_meta.txt`,
-    data: utf8Bytes(metaText),
-    isDir:false,
-    mtime: new Date(ph.createdAt || Date.now())
-  });
-}
-
+    entries.push({
+      name: path,
+      data,
+      isDir: false,
+      mtime: new Date(ph.createdAt || Date.now())
+    });
   }
 
-   // --- ZIP BUILD (Windows Explorer friendly) ---
+  // ---------------- ZIP BUILD (Windows-safe) ----------------
   const outParts = [];
   const centralParts = [];
   let offset = 0;
 
   for (const e of entries){
-    // Windows chce složky vždy s trailing "/" (ty už máš) a nulová data (máš)
     const nameBytes = utf8Bytes(e.name);
     const data = e.data || new Uint8Array(0);
-
     const { time, dt } = msDosTime(e.mtime || new Date());
     const crc = crc32(data);
     const size = data.length;
 
     const gpFlag = 0x0800; // UTF-8
     const method = 0;      // stored
+    const extAttr = e.isDir ? 0x10 : 0x00; // DOS attrs
 
-    // ✅ DOS external attrs – Explorer friendly:
-    // dir: 0x10, file: 0x00
-    const extAttr = e.isDir ? 0x10 : 0x00;
-
-    // Local file header
+    // local header
     const local = [
       ...u32(0x04034b50),
-      ...u16(20),           // version needed
+      ...u16(20),
       ...u16(gpFlag),
       ...u16(method),
       ...u16(time),
       ...u16(dt),
       ...u32(crc),
-      ...u32(size),         // comp size
-      ...u32(size),         // uncomp size
+      ...u32(size),
+      ...u32(size),
       ...u16(nameBytes.length),
-      ...u16(0),            // extra length
+      ...u16(0)
     ];
     const localBytes = new Uint8Array(local);
     outParts.push(localBytes, nameBytes, data);
 
-    const localHeaderOffset = offset;
+    const localOffset = offset;
     offset += localBytes.length + nameBytes.length + data.length;
 
-    // Central directory header
+    // central dir
     const central = [
       ...u32(0x02014b50),
-      ...u16(0x0014),       // ✅ version made by: DOS (0) + 20
-      ...u16(20),           // version needed
+      ...u16(0x0014), // made by DOS
+      ...u16(20),
       ...u16(gpFlag),
       ...u16(method),
       ...u16(time),
@@ -1390,39 +1349,40 @@ if (hasPhotoMeta){
       ...u32(size),
       ...u32(size),
       ...u16(nameBytes.length),
-      ...u16(0),            // extra
-      ...u16(0),            // comment
-      ...u16(0),            // disk number
-      ...u16(0),            // internal attrs
-      ...u32(extAttr),      // ✅ external attrs (DOS) – bez <<16
-      ...u32(localHeaderOffset),
+      ...u16(0),
+      ...u16(0),
+      ...u16(0),
+      ...u16(0),
+      ...u32(extAttr),
+      ...u32(localOffset)
     ];
     const centralBytes = new Uint8Array(central);
     centralParts.push(centralBytes, nameBytes);
   }
 
-  const centralSize = centralParts.reduce((s, p) => s + p.length, 0);
+  const centralSize = centralParts.reduce((s,p)=>s+p.length,0);
   const centralOffset = offset;
 
   outParts.push(...centralParts);
   offset += centralSize;
 
-  // End of central directory
   const eocd = new Uint8Array([
     ...u32(0x06054b50),
-    ...u16(0),                 // disk number
-    ...u16(0),                 // central dir disk
-    ...u16(entries.length),    // entries on this disk
-    ...u16(entries.length),    // total entries
+    ...u16(0),
+    ...u16(0),
+    ...u16(entries.length),
+    ...u16(entries.length),
     ...u32(centralSize),
     ...u32(centralOffset),
-    ...u16(0),                 // comment length
+    ...u16(0)
   ]);
+
   outParts.push(eocd);
 
   const zipBlob = new Blob(outParts, { type: "application/zip" });
   downloadBlob(zipBlob, `${pName}.zip`);
 }
+
 
 
 /* =========================
@@ -1436,7 +1396,7 @@ $("#hdrProjects").addEventListener("click", () => {
   if (isMobile()) $("#sidebar").classList.toggle("collapsed");
 });
 
-$("#btnNewProject").addEventListener("click",  () => {
+$("#btnNewProject").addEventListener("click", async () => {
   const name = prompt("Název projektu:");
   if (!name) return;
   await createProject(name);
@@ -1448,8 +1408,6 @@ $("#btnNewProject").addEventListener("click",  () => {
 (async function init(){
   $("#chipStatus").textContent = "Offline • Lokálně (IndexedDB)";
   await refresh();
-  if (isMobile()) $("#sidebar").classList.add("collapsed");
-
 })();
 </script>
 </body>
