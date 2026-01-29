@@ -5,7 +5,7 @@
   <meta name="viewport"
         content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover" />
   <meta name="color-scheme" content="dark light" />
-  <title>Taková menší sranda</title>
+  <title>Work App</title>
   <style>
     :root{
       --bg:#0b0c0f;
@@ -409,7 +409,7 @@
 <div class="app">
   <div class="topbar">
     <div class="brand">
-      <div class="title">Taková menší sranda</div>
+      <div class="title">Work App</div>
       <div class="chip" id="chipStatus">Offline • Lokálně</div>
     </div>
     <div class="top-actions">
@@ -736,6 +736,38 @@ function renderTree(){
       await uiDeleteProject(p.id);
     });
     el.appendChild(pRow);
+
+    const folders = state.folders.filter(f => f.projectId === p.id);
+    for (const f of folders){
+      const fRow = document.createElement("div");
+      fRow.className = "row" + (f.id === state.selectedFolderId ? " active" : "");
+      fRow.style.marginLeft = "14px";
+      fRow.innerHTML = `
+        <div class="l">
+          <span class="emoji">📁</span>
+          <div class="name">${escapeHtml(f.name)}</div>
+        </div>
+        <div class="meta">
+          <button class="mini secondary" title="Přejmenovat složku">✏️</button>
+          <button class="mini danger" title="Smazat složku">🗑️</button>
+        </div>
+      `;
+      fRow.addEventListener("click", () => {
+        selectFolder(f.id);
+        if (isMobile()) $("#sidebar").classList.add("collapsed");
+      });
+
+      const [renameBtn, delBtn] = fRow.querySelectorAll("button");
+      renameBtn.addEventListener("click", async (e) => {
+        e.stopPropagation();
+        await uiRenameFolder(f.id);
+      });
+      delBtn.addEventListener("click", async (e) => {
+        e.stopPropagation();
+        await uiDeleteFolder(f.id);
+      });
+
+      el.appendChild(fRow);
     }
   }
 }
@@ -878,6 +910,8 @@ function renderFolderView(folder){
   const body = $("#viewBody");
 
   body.innerHTML = `
+  $("#folderCreated").textContent =
+  new Date(folder.createdAt || Date.now()).toLocaleString("cs-CZ");
 $("#btnSaveProjectTechs").addEventListener("click", async () => {
   const techs = ($("#inpProjectTechs").value || "").trim();
   const updated = { ...project, techs };
@@ -1051,6 +1085,7 @@ async function refresh(){
 }
 
 async function createProject(name){
+  const p = { id: uid(), name: name.trim(), createdAt: nowISO() };
   const p = { id: uid(), name: name.trim(), createdAt: nowISO(), techs: "" };
   await idbPut("projects", p);
   state.selectedProjectId = p.id;
@@ -1241,7 +1276,7 @@ const infoText =
   `Technici: ${techs || "—"}\n`;
 
 entries.push({
-  name: `${baseDir}projekt_info.txt`,
+  name: `${baseDir}_projekt_info.txt`,
   data: utf8Bytes(infoText),
   isDir: false,
   mtime: new Date()
@@ -1414,7 +1449,7 @@ $("#btnNewProject").addEventListener("click", async () => {
    Init
 ========================= */
 (async function init(){
-  $("#chipStatus").textContent = "Local database :)";
+  $("#chipStatus").textContent = "Offline • Lokálně (IndexedDB)";
   await refresh();
 })();
 </script>
