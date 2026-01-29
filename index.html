@@ -412,10 +412,10 @@
       <div class="title">Work App</div>
       <div class="chip" id="chipStatus">Offline • Lokálně</div>
     </div>
-    <div class="top-actions">
-      <button class="secondary" id="btnToggleSidebar" title="Projekty">☰</button>
-      <!-- Export z topbaru pryč – export jen u projektu -->
-    </div>
+<div class="top-actions">
+  <button class="secondary" id="btnToggleSidebar" title="Projekty">☰</button>
+  <button class="ok mini" id="btnNewProjectTop" title="Nový projekt">＋</button>
+</div>
   </div>
 
   <div class="shell">
@@ -1436,7 +1436,7 @@ $("#hdrProjects").addEventListener("click", () => {
   if (isMobile()) $("#sidebar").classList.toggle("collapsed");
 });
 
-$("#btnNewProject").addEventListener("click", async () => {
+$("#btnNewProject").addEventListener("click",  () => {
   const name = prompt("Název projektu:");
   if (!name) return;
   await createProject(name);
