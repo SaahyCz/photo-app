@@ -532,6 +532,7 @@
 </div>
 
 <script>
+
 /* =========================
    Helpers
 ========================= */
@@ -1113,12 +1114,9 @@ function renderFolderView(folder){
 
     const parts = [];
     if (tech) parts.push(`Technik: ${tech}`);
-    if (notes) parts.push(`Poznámky:
-${notes}`);
+    if (notes) parts.push(`Poznámky:\n${notes}`);
     if (parts.length){
-      await addLog({ projectId: folder.projectId, folderId: folder.id, type: "SLOŽKA", message: parts.join("
-
-") });
+      await addLog({ projectId: folder.projectId, folderId: folder.id, type: "SLOŽKA", message: parts.join("\n\n") });
     }
 
     showToast("Uloženo", "ok");
