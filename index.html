@@ -353,9 +353,20 @@
         bottom: calc(env(safe-area-inset-bottom) + 12px);
         width:auto; max-width:none;
         z-index:6000;
+        background: var(--panel);
       }
       .sidebar.collapsed{ display:none; }
     }
+
+    /* Drawer backdrop (mobile) */
+    .drawer-backdrop{
+      position:fixed;
+      inset:0;
+      background: rgba(0,0,0,.62);
+      z-index:5999;
+      backdrop-filter: blur(2px);
+    }
+    body.drawer-open{ overflow:hidden; }
 
     /* PC: hide top-right bar */
     @media (min-width: 901px){
@@ -410,6 +421,39 @@
     .modal .row2{ display:flex; gap:10px; flex-wrap:wrap; }
     .modal .row2 > *{ flex:1 1 220px; }
     .modal .actions{ display:flex; gap:10px; justify-content:flex-end; margin-top:12px; }
+
+    /* Toasts */
+    .toast-host{
+      position:fixed;
+      left:0; right:0;
+      bottom: calc(env(safe-area-inset-bottom) + 14px);
+      display:flex;
+      flex-direction:column;
+      align-items:center;
+      gap:8px;
+      pointer-events:none;
+      z-index:12000;
+      padding:0 12px;
+    }
+    .toast{
+      pointer-events:none;
+      width: min(520px, 100%);
+      border-radius: 14px;
+      border:1px solid var(--border);
+      background: rgba(17,19,26,.92);
+      box-shadow: var(--shadow);
+      padding:10px 12px;
+      font-weight:800;
+      display:flex;
+      gap:10px;
+      transform: translateY(10px);
+      opacity:0;
+      transition: opacity .18s ease, transform .18s ease;
+    }
+    .toast.show{ opacity:1; transform: translateY(0); }
+    .toast.ok{ border-color: rgba(73,209,122,.35); }
+    .toast.danger{ border-color: rgba(255,77,77,.35); }
+    .toast .small{ font-weight:700; color: rgba(255,255,255,.75); font-size:12px; }
   </style>
 </head>
 
@@ -425,8 +469,6 @@
       <!-- Export z topbaru pryč – export jen u projektu -->
     </div>
   </div>
-
-  <div id="drawerBackdrop" class="drawer-backdrop" hidden></div>
 
   <div id="drawerBackdrop" class="drawer-backdrop" hidden></div>
 
@@ -560,6 +602,25 @@ function downloadBlob(blob, filename){
   a.remove();
   setTimeout(() => URL.revokeObjectURL(url), 1000);
 }
+
+function showToast(message, kind="info", detail=""){
+  const host = $("#toastHost");
+  if (!host) return;
+  const t = document.createElement("div");
+  t.className = "toast" + (kind === "ok" ? " ok" : kind === "danger" ? " danger" : "");
+  t.innerHTML = `<div style="min-width:0">
+    <div style="white-space:pre-wrap;word-break:break-word">${escapeHtml(message)}</div>
+    ${detail ? `<div class="small">${escapeHtml(detail)}</div>` : ""}
+  </div>`;
+  host.appendChild(t);
+  requestAnimationFrame(() => t.classList.add("show"));
+  const remove = () => {
+    t.classList.remove("show");
+    setTimeout(() => t.remove(), 220);
+  };
+  setTimeout(remove, 2400);
+}
+
 
 function extFromMimeOrName(file){
   const name = file?.name || "";
@@ -1112,7 +1173,9 @@ async function createProject(name){
   await idbPut("projects", p);
   state.selectedProjectId = p.id;
   state.selectedFolderId = null;
+  showToast("Složka smazána", "ok");
   await refresh();
+  showToast("Projekt vytvořen", "ok");
   if (isMobile()) closeSidebar();
 }
 
@@ -1122,7 +1185,9 @@ async function createFolder(projectId, name){
   await idbPut("folders", f);
   state.selectedProjectId = projectId;
   state.selectedFolderId = null;
+  showToast("Složka smazána", "ok");
   await refresh();
+  showToast("Složka vytvořena", "ok");
 }
 
 async function uiRenameFolder(folderId){
@@ -1132,6 +1197,7 @@ async function uiRenameFolder(folderId){
   if (!newName) return;
   f.name = newName.trim() || f.name;
   await idbPut("folders", f);
+  showToast("Fotky přidány", "ok");
   await refresh();
 }
 
@@ -1201,6 +1267,7 @@ async function uiDeleteFolder(folderId){
 
   await idbDel("folders", folderId);
   state.selectedFolderId = null;
+  showToast("Složka smazána", "ok");
   await refresh();
 }
 
@@ -1224,6 +1291,7 @@ async function uiDeleteProject(projectId){
 
   state.selectedProjectId = null;
   state.selectedFolderId = null;
+  showToast("Složka smazána", "ok");
   await refresh();
 }
 
@@ -1448,6 +1516,7 @@ if (hasPhotoMeta){
 
   const zipBlob = new Blob(outParts, { type: "application/zip" });
   downloadBlob(zipBlob, `${pName}.zip`);
+  showToast("Export stažen", "ok", `${pName}.zip`);
 }
 
 
@@ -1458,12 +1527,14 @@ function openSidebar(){
   const sb = $("#sidebar");
   const bd = $("#drawerBackdrop");
   sb.classList.remove("collapsed");
+  document.body.classList.add("drawer-open");
   if (bd) bd.hidden = false;
 }
 function closeSidebar(){
   const sb = $("#sidebar");
   const bd = $("#drawerBackdrop");
   sb.classList.add("collapsed");
+  document.body.classList.remove("drawer-open");
   if (bd) bd.hidden = true;
 }
 function toggleSidebar(){
@@ -1475,13 +1546,16 @@ function toggleSidebar(){
 /* =========================
    Events
 ========================= */
+const drawerBackdrop = $("#drawerBackdrop");
+if (drawerBackdrop){ drawerBackdrop.addEventListener("click", () => closeSidebar()); }
+
 $("#btnToggleSidebar").addEventListener("click", () => {
   if (isMobile()) toggleSidebar();
   else $("#sidebar").classList.toggle("collapsed");
 });
 
 $("#hdrProjects").addEventListener("click", () => {
-  if (isMobile()) $("#sidebar").classList.toggle("collapsed");
+  if (isMobile()) toggleSidebar();
 });
 
 $("#btnNewProject").addEventListener("click", () => {
@@ -1496,7 +1570,11 @@ $("#btnNewProject").addEventListener("click", () => {
 (async function init(){
   $("#chipStatus").textContent = "Offline • Lokálně (IndexedDB)";
   await refresh();
+  showToast("Projekt vytvořen", "ok");
+  if (isMobile()) closeSidebar();
 })();
 </script>
+
+<div id="toastHost" class="toast-host" aria-live="polite" aria-atomic="true"></div>
 </body>
 </html>
