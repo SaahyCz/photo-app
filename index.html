@@ -621,6 +621,39 @@ function showToast(message, kind="info", detail=""){
   setTimeout(remove, 2400);
 }
 
+async function addLog({ projectId, folderId=null, type="INFO", message="" }){
+  const rec = { id: uid(), projectId, folderId, type, message, createdAt: nowISO() };
+  await idbPut("logs", rec);
+}
+
+function fmtTime(iso){
+  try { return new Date(iso).toLocaleString("cs-CZ"); } catch(e){ return iso || ""; }
+}
+
+function renderChat(hostEl, items){
+  if (!hostEl) return;
+  if (!items.length){
+    hostEl.innerHTML = `<div style="color:var(--muted)">Zatím nic.</div>`;
+    return;
+  }
+  hostEl.innerHTML = "";
+  for (const it of items){
+    const div = document.createElement("div");
+    div.style.border = "1px solid var(--border)";
+    div.style.background = "rgba(255,255,255,.05)";
+    div.style.borderRadius = "14px";
+    div.style.padding = "10px 12px";
+    div.innerHTML = `
+      <div style="display:flex;justify-content:space-between;gap:10px;margin-bottom:6px">
+        <div style="font-weight:900">${escapeHtml(it.type || "INFO")}</div>
+        <div style="color:var(--muted);font-size:12px;white-space:nowrap">${escapeHtml(fmtTime(it.createdAt))}</div>
+      </div>
+      <div style="white-space:pre-wrap;word-break:break-word">${escapeHtml(it.message || "")}</div>
+    `;
+    hostEl.appendChild(div);
+  }
+}
+
 
 function extFromMimeOrName(file){
   const name = file?.name || "";
@@ -644,7 +677,7 @@ function baseNameNoExt(filename){
    IndexedDB
 ========================= */
 const DB_NAME = "work_app_db";
-const DB_VER = 2; // bump for folder meta fields
+const DB_VER = 3; // bump for folder meta fields
 
 function idbOpen(){
   return new Promise((resolve, reject) => {
@@ -662,6 +695,12 @@ function idbOpen(){
       }
       if (!db.objectStoreNames.contains("photos")){
         const s = db.createObjectStore("photos", { keyPath: "id" });
+        s.createIndex("projectId", "projectId");
+        s.createIndex("folderId", "folderId");
+        s.createIndex("createdAt", "createdAt");
+      }
+if (!db.objectStoreNames.contains("logs")){
+        const s = db.createObjectStore("logs", { keyPath: "id" });
         s.createIndex("projectId", "projectId");
         s.createIndex("folderId", "folderId");
         s.createIndex("createdAt", "createdAt");
@@ -725,6 +764,7 @@ const state = {
   projects: [],
   folders: [],
   photos: [],
+  logs: [],
   selectedProjectId: null,
   selectedFolderId: null,
 };
@@ -909,6 +949,11 @@ function renderProjectView(project){
     </div>
 
     <div class="card">
+      <h3>Log (projekt)</h3>
+      <div id="projectChat"></div>
+    </div>
+
+    <div class="card">
       <h3>Nová složka</h3>
       <div class="grid">
         <input id="inpFolderName" type="text" placeholder="Název složky…" />
@@ -930,6 +975,14 @@ function renderProjectView(project){
     const techs = ($("#inpProjectTechs").value || "").trim();
     const updated = { ...project, techs };
     await idbPut("projects", updated);
+
+    await addLog({
+      projectId: project.id,
+      type: "TECHNICI",
+      message: techs ? `Technici: ${techs}` : "Technici vymazáni"
+    });
+
+    showToast("Technici uloženi", "ok");
     await refresh();
   });
 
@@ -952,12 +1005,18 @@ function renderProjectView(project){
         <div class="meta">
           <span>${count} fotek</span>
           <button class="mini secondary" title="Přejmenovat">✏️</button>
+          <button class="mini danger" title="Smazat">🗑️</button>
         </div>
       `;
       row.addEventListener("click", () => selectFolder(f.id));
-      row.querySelector("button").addEventListener("click", async (e) => {
+      const [renameBtn, delBtn] = row.querySelectorAll("button");
+      renameBtn.addEventListener("click", async (e) => {
         e.stopPropagation();
         await uiRenameFolder(f.id);
+      });
+      delBtn.addEventListener("click", async (e) => {
+        e.stopPropagation();
+        await uiDeleteFolder(f.id);
       });
       list.appendChild(row);
     }
@@ -987,6 +1046,12 @@ function renderProjectView(project){
   // ✅ Export jen u projektu
   const exportBtn = makeActionButton("⬇︎ Export", "ok", exportSelectedProject);
   const delBtn = makeActionButton("🗑️ Smazat projekt", "danger", () => uiDeleteProject(project.id));
+  // project log (chat-style)
+  const pLogs = state.logs
+    .filter(l => l.projectId === project.id && !l.folderId)
+    .sort((a,b)=> (b.createdAt||"").localeCompare(a.createdAt||""));
+  renderChat($("#projectChat"), pLogs);
+
   setActions([exportBtn, delBtn]);
 }
 
@@ -1008,6 +1073,11 @@ function renderFolderView(folder){
       <div style="margin-top:8px;color:var(--muted);font-size:12px">
         Tyto údaje jsou pro celou složku a zůstávají uložené.
       </div>
+    </div>
+
+    <div class="card">
+      <h3>Log (složka)</h3>
+      <div id="folderChat"></div>
     </div>
 
     <div class="card">
@@ -1040,6 +1110,18 @@ function renderFolderView(folder){
     const notes = ($("#folderNotes").value || "").trim();
     const updated = { ...folder, tech, notes, updatedAt: nowISO() };
     await idbPut("folders", updated);
+
+    const parts = [];
+    if (tech) parts.push(`Technik: ${tech}`);
+    if (notes) parts.push(`Poznámky:
+${notes}`);
+    if (parts.length){
+      await addLog({ projectId: folder.projectId, folderId: folder.id, type: "SLOŽKA", message: parts.join("
+
+") });
+    }
+
+    showToast("Uloženo", "ok");
     await refresh();
   });
 
@@ -1060,6 +1142,12 @@ function renderFolderView(folder){
     await addPhotosToFolder(folder.id, files);
     fileCamera.value = "";
   });
+
+  // folder log (chat-style)
+  const fLogs = state.logs
+    .filter(l => l.folderId === folder.id)
+    .sort((a,b)=> (b.createdAt||"").localeCompare(a.createdAt||""));
+  renderChat($("#folderChat"), fLogs);
 
   renderPhotos(folder.id);
 
@@ -1139,6 +1227,7 @@ async function refresh(){
   state.projects = (await idbGetAll("projects")).sort((a,b)=> (a.createdAt||"").localeCompare(b.createdAt||""));
   state.folders  = (await idbGetAll("folders")).sort((a,b)=> (a.createdAt||"").localeCompare(b.createdAt||""));
   state.photos   = (await idbGetAll("photos")).sort((a,b)=> (a.createdAt||"").localeCompare(b.createdAt||""));
+  state.logs    = (await idbGetAll("logs")).sort((a,b)=> (a.createdAt||"").localeCompare(b.createdAt||""));
 
   if (state.selectedFolderId && !state.folders.find(f => f.id === state.selectedFolderId)){
     state.selectedFolderId = null;
@@ -1185,7 +1274,6 @@ async function createFolder(projectId, name){
   await idbPut("folders", f);
   state.selectedProjectId = projectId;
   state.selectedFolderId = null;
-  showToast("Složka smazána", "ok");
   await refresh();
   showToast("Složka vytvořena", "ok");
 }
