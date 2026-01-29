@@ -821,6 +821,17 @@ function renderProjectView(project){
   const body = $("#viewBody");
   body.innerHTML = `
     <div class="card">
+    <div class="card">
+  <h3>Technici (projekt)</h3>
+  <div class="grid">
+    <input id="inpProjectTechs" type="text" placeholder="Např. Jakub, Petr, …" value="${escapeHtml(project.techs || "")}" />
+    <button class="ok" id="btnSaveProjectTechs">Uložit</button>
+  </div>
+  <div style="margin-top:8px;color:var(--muted);font-size:12px">
+    Odděl čárkou. Uloží se do projektu a dá se exportovat.
+  </div>
+</div>
+
       <h3>Nová složka</h3>
       <div class="grid">
         <input id="inpFolderName" type="text" placeholder="Název složky…" />
@@ -899,8 +910,14 @@ function renderFolderView(folder){
   const body = $("#viewBody");
 
   body.innerHTML = `
-  $("#folderCreated").textContent =
-  new Date(folder.createdAt || Date.now()).toLocaleString("cs-CZ");
+$("#btnSaveProjectTechs").addEventListener("click", async () => {
+  const techs = ($("#inpProjectTechs").value || "").trim();
+  const updated = { ...project, techs };
+  await idbPut("projects", updated);
+  await refresh();
+});
+
+
     <div class="card">
       <h3>Technik a poznámky (složka)</h3>
       <div class="grid">
@@ -1066,7 +1083,7 @@ async function refresh(){
 }
 
 async function createProject(name){
-  const p = { id: uid(), name: name.trim(), createdAt: nowISO() };
+  const p = { id: uid(), name: name.trim(), createdAt: nowISO(), techs: "" };
   await idbPut("projects", p);
   state.selectedProjectId = p.id;
   state.selectedFolderId = null;
@@ -1244,6 +1261,24 @@ async function exportSelectedProject(){
 
   const entries = [];
   entries.push({ name: baseDir, data: new Uint8Array(0), isDir:true, mtime: new Date() });
+  // Projekt info hned v rootu projektu
+const totalPhotos = photos.length;
+const created = new Date(project.createdAt || Date.now()).toLocaleString("cs-CZ");
+const techs = (project.techs || "").trim();
+
+const infoText =
+  `Projekt: ${project.name}\n` +
+  `Založeno: ${created}\n` +
+  `Počet fotek: ${totalPhotos}\n` +
+  `Technici: ${techs || "—"}\n`;
+
+entries.push({
+  name: `${baseDir}_projekt_info.txt`,
+  data: utf8Bytes(infoText),
+  isDir: false,
+  mtime: new Date()
+});
+
 
   for (const f of folders){
     const fName = sanitizeName(f.name);
