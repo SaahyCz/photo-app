@@ -5,7 +5,7 @@
   <meta name="viewport"
         content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover" />
   <meta name="color-scheme" content="dark light" />
-  <title>Photo App</title>
+  <title>Work App</title>
   <style>
     :root{
       --bg:#0b0c0f;
@@ -62,7 +62,7 @@
       white-space:nowrap;
       overflow:hidden;
       text-overflow:ellipsis;
-      max-width:50vw;
+      max-width:56vw;
     }
     .chip{
       font-size:12px;
@@ -93,12 +93,6 @@
     button.secondary{ background:transparent; }
     button.danger{ border-color: rgba(255,77,77,.35); background: rgba(255,77,77,.12); }
     button.ok{ border-color: rgba(73,209,122,.35); background: rgba(73,209,122,.12); }
-    .mini{
-      padding:7px 10px;
-      min-height:36px;
-      border-radius:10px;
-      font-weight:750;
-    }
 
     .shell{
       flex:1 1 auto;
@@ -107,7 +101,6 @@
       gap:12px;
       padding:12px;
     }
-
     .sidebar{
       width:320px;
       min-width:260px;
@@ -130,7 +123,7 @@
       gap:8px;
     }
     .sidebar .hdr .h{
-      font-weight:900;
+      font-weight:800;
       letter-spacing:.2px;
       cursor:pointer;
       user-select:none;
@@ -167,7 +160,7 @@
     .content .hdr .left{ min-width:0; }
     .content .hdr .title{
       font-size:16px;
-      font-weight:900;
+      font-weight:850;
       white-space:nowrap;
       overflow:hidden;
       text-overflow:ellipsis;
@@ -213,7 +206,7 @@
       text-align:center;
     }
     .row .name{
-      font-weight:800;
+      font-weight:750;
       min-width:0;
       display:-webkit-box;
       -webkit-line-clamp:2;
@@ -221,12 +214,18 @@
       overflow:hidden;
     }
     .row .meta{
-      display:flex;
-      gap:8px;
-      align-items:center;
       color:var(--muted);
       font-size:12px;
       white-space:nowrap;
+      display:flex;
+      align-items:center;
+      gap:8px;
+    }
+    .mini{
+      padding:7px 10px;
+      min-height:36px;
+      border-radius:10px;
+      font-weight:750;
     }
 
     .card{
@@ -239,7 +238,7 @@
     .card h3{
       margin:0 0 10px 0;
       font-size:14px;
-      font-weight:950;
+      font-weight:900;
     }
     .grid{
       display:grid;
@@ -256,19 +255,11 @@
       background: rgba(255,255,255,.05);
       color:var(--text);
       outline:none;
+      font: inherit;
     }
-    textarea{
-      min-height:120px;
-      resize:vertical;
-    }
+    textarea{ min-height:90px; resize:vertical; }
     input[type="text"]::placeholder, textarea::placeholder{ color: rgba(255,255,255,.35); }
 
-    .toolbar{
-      display:flex;
-      flex-wrap:wrap;
-      gap:8px;
-      align-items:center;
-    }
     .file-btn{
       position:relative;
       display:inline-flex;
@@ -281,29 +272,36 @@
       border:1px solid var(--border);
       background: rgba(255,255,255,.06);
       color:var(--text);
-      font-weight:900;
+      font-weight:800;
       cursor:pointer;
       white-space:nowrap;
-      user-select:none;
+    }
+    .toolbar{
+      display:flex;
+      flex-wrap:wrap;
+      gap:8px;
+      align-items:center;
     }
     .hidden-file{
       position:absolute;
-      inset:0;
+      left:-9999px;
+      width:1px;
+      height:1px;
       opacity:0;
-      cursor:pointer;
     }
 
+    /* Thumbnails smaller */
     .photos{
       display:grid;
       grid-template-columns: repeat(3, minmax(0, 1fr));
-      gap:10px;
+      gap:8px;
     }
     @media (min-width: 760px){
-      .photos{ grid-template-columns: repeat(5, minmax(0, 1fr)); }
+      .photos{ grid-template-columns: repeat(6, minmax(0, 1fr)); }
     }
     .ph{
       border:1px solid var(--border);
-      border-radius: 14px;
+      border-radius: 12px;
       overflow:hidden;
       background: rgba(255,255,255,.03);
       position:relative;
@@ -315,26 +313,55 @@
       object-fit:cover;
       display:block;
     }
-    .ph .x{
+    .ph .x, .ph .edit{
       position:absolute;
-      top:8px;
-      right:8px;
       border-radius:999px;
-      min-height:34px;
-      padding:6px 10px;
+      min-height:30px;
+      padding:5px 9px;
       background: rgba(0,0,0,.45);
       border:1px solid rgba(255,255,255,.18);
+      font-weight:900;
+    }
+    .ph .x{ top:6px; right:6px; }
+
+    .landing{
+      display:flex;
+      flex-direction:column;
+      gap:12px;
+      align-items:flex-start;
+      padding:16px;
+    }
+    .landing .hero{
+      font-size:18px;
       font-weight:950;
+      letter-spacing:.2px;
+    }
+    .landing .p{ color:var(--muted); }
+    .credit{
+      margin-top:10px;
+      font-size:12px;
+      color: rgba(255,255,255,.55);
     }
 
-    /* Mobile layout */
     @media (max-width: 900px){
       .shell{ flex-direction:column; }
-      .sidebar{ width:100%; max-width:none; }
-      .sidebar.collapsed .list{ display:none; }
+      /* Sidebar as drawer overlay on mobile */
+      .sidebar{
+        position:fixed;
+        left:12px; right:12px;
+        top: calc(env(safe-area-inset-top) + 64px);
+        bottom: calc(env(safe-area-inset-bottom) + 12px);
+        width:auto; max-width:none;
+        z-index:6000;
+      }
+      .sidebar.collapsed{ display:none; }
     }
 
-    /* Confirm modal */
+    /* PC: hide top-right bar */
+    @media (min-width: 901px){
+      .top-actions{ display:none; }
+    }
+
     .confirm-overlay[hidden]{ display:none; }
     .confirm-overlay{
       position:fixed;
@@ -358,6 +385,31 @@
     .confirm-title{ font-size:16px; font-weight:950; margin-bottom:8px; }
     .confirm-text{ color: rgba(255,255,255,.85); margin-bottom:14px; }
     .confirm-actions{ display:flex; gap:10px; justify-content:flex-end; }
+
+    /* Photo meta modal */
+    .modal-overlay[hidden]{ display:none; }
+    .modal-overlay{
+      position:fixed;
+      inset:0;
+      display:flex;
+      align-items:center;
+      justify-content:center;
+      padding:16px;
+      background: rgba(0,0,0,.55);
+      z-index:10000;
+    }
+    .modal{
+      width:min(560px, 100%);
+      border-radius: 16px;
+      background: var(--panel);
+      border:1px solid var(--border);
+      box-shadow: var(--shadow);
+      padding:16px;
+    }
+    .modal h3{ margin:0 0 10px 0; font-size:16px; font-weight:950; }
+    .modal .row2{ display:flex; gap:10px; flex-wrap:wrap; }
+    .modal .row2 > *{ flex:1 1 220px; }
+    .modal .actions{ display:flex; gap:10px; justify-content:flex-end; margin-top:12px; }
   </style>
 </head>
 
@@ -365,20 +417,22 @@
 <div class="app">
   <div class="topbar">
     <div class="brand">
-      <div class="title">Photo App</div>
-      <div class="chip" id="chipStatus">Offline • Lokálně (IndexedDB)</div>
+      <div class="title">Work App</div>
+      <div class="chip" id="chipStatus">Offline • Lokálně</div>
     </div>
     <div class="top-actions">
       <button class="secondary" id="btnToggleSidebar" title="Projekty">☰</button>
-      <button class="ok mini" id="btnNewProjectTop" title="Nový projekt">＋</button>
+      <!-- Export z topbaru pryč – export jen u projektu -->
     </div>
   </div>
+
+  <div id="drawerBackdrop" class="drawer-backdrop" hidden></div>
 
   <div class="shell">
     <aside class="sidebar" id="sidebar">
       <div class="hdr">
         <div class="h" id="hdrProjects">Projekty</div>
-        <button class="mini" id="btnNewProject" title="Nový projekt">＋</button>
+        <button class="mini" id="btnNewProject">＋</button>
       </div>
       <div class="list" id="tree"></div>
     </aside>
@@ -408,6 +462,31 @@
   </div>
 </div>
 
+<!-- Photo meta modal -->
+<div id="photoOverlay" class="modal-overlay" hidden>
+  <div class="modal" role="dialog" aria-modal="true">
+    <h3 id="photoModalTitle">Popis fotky</h3>
+    <div class="row2">
+      <div>
+        <div style="color:var(--muted);font-size:12px;margin-bottom:6px">Název fotky</div>
+        <input type="text" id="photoName" placeholder="Např. Kuchyně - detail…" />
+      </div>
+      <div>
+        <div style="color:var(--muted);font-size:12px;margin-bottom:6px">Technik</div>
+        <input type="text" id="photoTech" placeholder="Např. Jakub / Petr…" />
+      </div>
+    </div>
+    <div style="margin-top:10px">
+      <div style="color:var(--muted);font-size:12px;margin-bottom:6px">Poznámky</div>
+      <textarea id="photoNotes" placeholder="Krátký popis / co je potřeba udělat…"></textarea>
+    </div>
+    <div class="actions">
+      <button type="button" id="photoCancel" class="secondary">Zrušit</button>
+      <button type="button" id="photoSave" class="ok">Uložit</button>
+    </div>
+  </div>
+</div>
+
 <script>
 /* =========================
    Helpers
@@ -417,8 +496,12 @@ const $ = (sel, el=document) => el.querySelector(sel);
 function nowISO(){ return new Date().toISOString(); }
 function isMobile(){ return window.matchMedia("(max-width: 900px)").matches; }
 
-function uid(){
-  return (crypto && crypto.randomUUID) ? crypto.randomUUID() : (Date.now()+"_"+Math.random().toString(16).slice(2));
+function sanitizeName(name){
+  return (name || "Bez názvu")
+    .trim()
+    .replace(/[\\/:*?"<>|]/g, "_")
+    .replace(/\s+/g, " ")
+    .slice(0, 80) || "Bez názvu";
 }
 function escapeHtml(s){
   return String(s || "")
@@ -427,33 +510,6 @@ function escapeHtml(s){
     .replaceAll(">","&gt;")
     .replaceAll('"',"&quot;")
     .replaceAll("'","&#039;");
-}
-function sanitizeName(name){
-  return (name || "Bez názvu")
-    .trim()
-    .replace(/[\\/:*?"<>|]/g, "_")
-    .replace(/\s+/g, " ")
-    .slice(0, 80) || "Bez názvu";
-}
-function baseNameNoExt(name){
-  const n = String(name || "").trim();
-  if (!n) return "";
-  const lastSlash = Math.max(n.lastIndexOf("/"), n.lastIndexOf("\\"));
-  const file = lastSlash >= 0 ? n.slice(lastSlash+1) : n;
-  const dot = file.lastIndexOf(".");
-  return dot > 0 ? file.slice(0, dot) : file;
-}
-function extFromMimeOrName(file){
-  const t = (file?.type || "").toLowerCase();
-  if (t.includes("png")) return "png";
-  if (t.includes("webp")) return "webp";
-  if (t.includes("gif")) return "gif";
-  if (t.includes("bmp")) return "bmp";
-  if (t.includes("heic") || t.includes("heif")) return "heic";
-  const n = String(file?.name || "");
-  const dot = n.lastIndexOf(".");
-  if (dot >= 0) return sanitizeName(n.slice(dot+1)).toLowerCase().slice(0,8) || "jpg";
-  return "jpg";
 }
 
 async function confirmPopup({ title="Potvrzení", text="Opravdu?", okText="OK", cancelText="Zrušit" } = {}){
@@ -500,14 +556,32 @@ function downloadBlob(blob, filename){
   document.body.appendChild(a);
   a.click();
   a.remove();
-  setTimeout(() => URL.revokeObjectURL(url), 1500);
+  setTimeout(() => URL.revokeObjectURL(url), 1000);
+}
+
+function extFromMimeOrName(file){
+  const name = file?.name || "";
+  const dot = name.lastIndexOf(".");
+  if (dot > -1 && dot < name.length-1) return name.slice(dot+1).toLowerCase();
+  const t = (file?.type || "").toLowerCase();
+  if (t.includes("jpeg")) return "jpg";
+  if (t.includes("png")) return "png";
+  if (t.includes("webp")) return "webp";
+  if (t.includes("heic")) return "heic";
+  return "jpg";
+}
+function baseNameNoExt(filename){
+  const n = filename || "";
+  const dot = n.lastIndexOf(".");
+  if (dot <= 0) return n || "";
+  return n.slice(0, dot);
 }
 
 /* =========================
    IndexedDB
 ========================= */
-const DB_NAME = "photo_app_db";
-const DB_VER = 4;
+const DB_NAME = "work_app_db";
+const DB_VER = 2; // bump for folder meta fields
 
 function idbOpen(){
   return new Promise((resolve, reject) => {
@@ -529,6 +603,7 @@ function idbOpen(){
         s.createIndex("folderId", "folderId");
         s.createIndex("createdAt", "createdAt");
       }
+      // no schema changes needed beyond version bump; objects can have extra fields.
     };
     req.onsuccess = () => resolve(req.result);
     req.onerror = () => reject(req.error);
@@ -559,6 +634,7 @@ async function idbGetAll(storeName){
     });
   });
 }
+
 async function idbPut(storeName, obj){
   return idbTx(storeName, "readwrite", async ([s]) => {
     return new Promise((resolve, reject) => {
@@ -568,6 +644,7 @@ async function idbPut(storeName, obj){
     });
   });
 }
+
 async function idbDel(storeName, id){
   return idbTx(storeName, "readwrite", async ([s]) => {
     return new Promise((resolve, reject) => {
@@ -588,11 +665,59 @@ const state = {
   selectedProjectId: null,
   selectedFolderId: null,
 };
+function uid(){
+  return (crypto && crypto.randomUUID) ? crypto.randomUUID() : (Date.now()+"_"+Math.random().toString(16).slice(2));
+}
 
 /* =========================
-   Render: sidebar tree
-   - Mobile: ONLY projects
-   - Desktop: projects + folders
+   Photo modal (name/tech/notes)
+========================= */
+const photoModal = {
+  overlay: $("#photoOverlay"),
+  title: $("#photoModalTitle"),
+  name: $("#photoName"),
+  tech: $("#photoTech"),
+  notes: $("#photoNotes"),
+  cancel: $("#photoCancel"),
+  save: $("#photoSave"),
+  _resolver: null,
+  _mode: "create", // create | edit
+};
+
+function openPhotoMetaModal({title="Popis fotky", preset={name:"", tech:"", notes:""}}){
+  photoModal.title.textContent = title;
+  photoModal.name.value = preset.name || "";
+  photoModal.tech.value = preset.tech || "";
+  photoModal.notes.value = preset.notes || "";
+  photoModal.overlay.hidden = false;
+  photoModal.name.focus();
+
+  return new Promise((resolve) => {
+    const cleanup = () => {
+      photoModal.overlay.hidden = true;
+      photoModal.cancel.removeEventListener("click", onCancel);
+      photoModal.save.removeEventListener("click", onSave);
+      document.removeEventListener("keydown", onKey);
+      photoModal._resolver = null;
+    };
+    const onCancel = () => { cleanup(); resolve(null); };
+    const onSave = () => {
+      const name = (photoModal.name.value || "").trim();
+      const tech = (photoModal.tech.value || "").trim();
+      const notes = (photoModal.notes.value || "").trim();
+      cleanup();
+      resolve({ name, tech, notes });
+    };
+    const onKey = (e) => { if (e.key === "Escape") onCancel(); };
+
+    photoModal.cancel.addEventListener("click", onCancel);
+    photoModal.save.addEventListener("click", onSave);
+    document.addEventListener("keydown", onKey);
+  });
+}
+
+/* =========================
+   UI: render tree
 ========================= */
 function renderTree(){
   const el = $("#tree");
@@ -608,60 +733,60 @@ function renderTree(){
     pRow.className = "row" + (p.id === state.selectedProjectId ? " active" : "");
     pRow.innerHTML = `
       <div class="l">
-        <span class="emoji">🏠</span>
         <div class="name">${escapeHtml(p.name)}</div>
       </div>
       <button class="mini danger" title="Smazat projekt">🗑️</button>
     `;
-
     pRow.addEventListener("click", () => {
       selectProject(p.id);
-      if (isMobile()) $("#sidebar").classList.add("collapsed");
+      if (isMobile()) closeSidebar();
     });
     pRow.querySelector("button").addEventListener("click", async (e) => {
       e.stopPropagation();
       await uiDeleteProject(p.id);
     });
-
     el.appendChild(pRow);
 
-    // Desktop: show folders under project. Mobile: hide them.
+    // ✅ Na mobilu v seznamu projektů nezobrazuj složky
     if (!isMobile()){
       const folders = state.folders.filter(f => f.projectId === p.id);
       for (const f of folders){
-        const count = state.photos.filter(ph => ph.folderId === f.id).length;
+      const fRow = document.createElement("div");
+      fRow.className = "row" + (f.id === state.selectedFolderId ? " active" : "");
+      fRow.style.marginLeft = "14px";
+      fRow.innerHTML = `
+        <div class="l">
+          <span class="emoji">📁</span>
+          <div class="name">${escapeHtml(f.name)}</div>
+        </div>
+        <div class="meta">
+          <button class="mini secondary" title="Přejmenovat složku">✏️</button>
+          <button class="mini danger" title="Smazat složku">🗑️</button>
+        </div>
+      `;
+      fRow.addEventListener("click", () => {
+        selectFolder(f.id);
+        if (isMobile()) closeSidebar();
+      });
 
-        const fRow = document.createElement("div");
-        fRow.className = "row" + (f.id === state.selectedFolderId ? " active" : "");
-        fRow.style.marginLeft = "14px";
-        fRow.innerHTML = `
-          <div class="l">
-            <span class="emoji">📁</span>
-            <div class="name">${escapeHtml(f.name)}</div>
-          </div>
-          <div class="meta">
-            <span>${count} фото</span>
-            <button class="mini secondary" title="Přejmenovat">✏️</button>
-            <button class="mini danger" title="Smazat">🗑️</button>
-          </div>
-        `;
+      const [renameBtn, delBtn] = fRow.querySelectorAll("button");
+      renameBtn.addEventListener("click", async (e) => {
+        e.stopPropagation();
+        await uiRenameFolder(f.id);
+      });
+      delBtn.addEventListener("click", async (e) => {
+        e.stopPropagation();
+        await uiDeleteFolder(f.id);
+      });
 
-        fRow.addEventListener("click", () => {
-          selectFolder(f.id);
-        });
-
-        const btns = fRow.querySelectorAll("button");
-        btns[0].addEventListener("click", async (e) => { e.stopPropagation(); await uiRenameFolder(f.id); });
-        btns[1].addEventListener("click", async (e) => { e.stopPropagation(); await uiDeleteFolder(f.id); });
-
-        el.appendChild(fRow);
+      el.appendChild(fRow);
       }
     }
   }
 }
 
 /* =========================
-   Main header/actions
+   UI: main view
 ========================= */
 function setHeader(title, sub){
   $("#viewTitle").textContent = title;
@@ -672,43 +797,42 @@ function setActions(nodes){
   a.innerHTML = "";
   for (const n of (nodes || [])) a.appendChild(n);
 }
+function makeActionButton(text, cls, onClick){
+  const b = document.createElement("button");
+  if (cls) b.className = cls;
+  b.textContent = text;
+  b.addEventListener("click", onClick);
+  return b;
+}
 
-/* =========================
-   Views
-========================= */
 function renderLanding(){
   setHeader("Vítej", "Vytvoř projekt a začni");
   const body = $("#viewBody");
   body.innerHTML = `
-    <div class="card">
-      <h3>Nový projekt</h3>
-      <div class="grid">
-        <input id="inpProjectName" type="text" placeholder="Název projektu…" />
-        <button class="ok" id="btnCreateProject">Vytvořit</button>
+    <div class="landing">
+      <div class="hero">Začni vytvořením projektu</div>
+      <div class="p">Vše se ukládá lokálně v prohlížeči (IndexedDB). Export ti stáhne ZIP s celou strukturou.</div>
+      <div class="card" style="width:100%">
+        <h3>Nový projekt</h3>
+        <div class="grid">
+          <input id="inpProjectName" type="text" placeholder="Název projektu…" />
+          <button class="ok" id="btnCreateProject">Vytvořit</button>
+        </div>
       </div>
-      <div style="margin-top:10px;color:var(--muted);font-size:12px">
-        Vše se ukládá lokálně v prohlížeči (IndexedDB).
-      </div>
-      <div style="margin-top:10px;color:rgba(255,255,255,.55);font-size:12px">
-        Vytvořil Jakub Haas
-      </div>
+      <div class="credit">Vytvořil Jakub Haas</div>
     </div>
   `;
   setActions([]);
-  $("#btnCreateProject").addEventListener("click", () => {
+  $("#btnCreateProject").addEventListener("click", async () => {
     const name = ($("#inpProjectName").value || "").trim();
-    if (!name){ alert("Zadej název projektu."); return; }
-    createProject(name);
+    await createProject(name || "Nový projekt");
   });
 }
 
 function renderProjectView(project){
-  const folders = state.folders.filter(f => f.projectId === project.id);
-  const photosCount = state.photos.filter(ph => ph.projectId === project.id).length;
-
-  setHeader(`🏠 ${project.name}`, `Složek: ${folders.length} • Fotek: ${photosCount}`);
-
+  setHeader(`🏠 ${project.name}`, "Projekt");
   const body = $("#viewBody");
+
   body.innerHTML = `
     <div class="card">
       <h3>Technici (projekt)</h3>
@@ -717,7 +841,7 @@ function renderProjectView(project){
         <button class="ok" id="btnSaveProjectTechs">Uložit</button>
       </div>
       <div style="margin-top:8px;color:var(--muted);font-size:12px">
-        Odděl čárkou. Použije se i do exportu (PDF).
+        Odděl čárkou. Uloží se do projektu a dá se exportovat.
       </div>
     </div>
 
@@ -727,8 +851,8 @@ function renderProjectView(project){
         <input id="inpFolderName" type="text" placeholder="Název složky…" />
         <button class="ok" id="btnCreateFolder">Vytvořit</button>
       </div>
-      <div style="margin-top:8px;color:var(--muted);font-size:12px">
-        Název je povinný.
+      <div id="folderError" style="margin-top:8px;color:rgba(255,77,77,.95);font-size:12px;display:none">
+        Vyplň název složky.
       </div>
     </div>
 
@@ -738,20 +862,16 @@ function renderProjectView(project){
     </div>
   `;
 
+  // save project techs
   $("#btnSaveProjectTechs").addEventListener("click", async () => {
     const techs = ($("#inpProjectTechs").value || "").trim();
-    await idbPut("projects", { ...project, techs });
+    const updated = { ...project, techs };
+    await idbPut("projects", updated);
     await refresh();
   });
 
-  $("#btnCreateFolder").addEventListener("click", async () => {
-    const name = ($("#inpFolderName").value || "").trim();
-    if (!name){ alert("Zadej název složky."); return; }
-    await createFolder(project.id, name);
-    // zůstaň v projektu (nepřepínat do složky)
-    $("#inpFolderName").value = "";
-  });
-
+  // folders list
+  const folders = state.folders.filter(f => f.projectId === project.id);
   const list = $("#folderList");
   if (!folders.length){
     list.innerHTML = `<div style="color:var(--muted)">Zatím žádné složky.</div>`;
@@ -769,28 +889,41 @@ function renderProjectView(project){
         <div class="meta">
           <span>${count} fotek</span>
           <button class="mini secondary" title="Přejmenovat">✏️</button>
-          <button class="mini danger" title="Smazat">🗑️</button>
         </div>
       `;
       row.addEventListener("click", () => selectFolder(f.id));
-      const btns = row.querySelectorAll("button");
-      btns[0].addEventListener("click", async (e) => { e.stopPropagation(); await uiRenameFolder(f.id); });
-      btns[1].addEventListener("click", async (e) => { e.stopPropagation(); await uiDeleteFolder(f.id); });
+      row.querySelector("button").addEventListener("click", async (e) => {
+        e.stopPropagation();
+        await uiRenameFolder(f.id);
+      });
       list.appendChild(row);
     }
   }
 
-  // Actions: export + delete project
-  const exportBtn = document.createElement("button");
-  exportBtn.className = "ok";
-  exportBtn.textContent = "⬇︎ Export";
-  exportBtn.addEventListener("click", exportSelectedProject);
+  // create folder (stay in project)
+  const inp = $("#inpFolderName");
+  const err = $("#folderError");
 
-  const delBtn = document.createElement("button");
-  delBtn.className = "danger";
-  delBtn.textContent = "🗑️ Smazat projekt";
-  delBtn.addEventListener("click", () => uiDeleteProject(project.id));
+  $("#btnCreateFolder").addEventListener("click", async () => {
+    const name = (inp.value || "").trim();
+    if (!name){
+      err.style.display = "block";
+      inp.focus();
+      return;
+    }
+    err.style.display = "none";
+    await createFolder(project.id, name);
+    inp.value = "";
+    inp.focus();
+  });
 
+  inp.addEventListener("input", () => {
+    if ((inp.value || "").trim()) err.style.display = "none";
+  });
+
+  // ✅ Export jen u projektu
+  const exportBtn = makeActionButton("⬇︎ Export", "ok", exportSelectedProject);
+  const delBtn = makeActionButton("🗑️ Smazat projekt", "danger", () => uiDeleteProject(project.id));
   setActions([exportBtn, delBtn]);
 }
 
@@ -801,35 +934,34 @@ function renderFolderView(folder){
   const body = $("#viewBody");
   body.innerHTML = `
     <div class="card">
-      <h3>Přidat fotky</h3>
-      <div class="toolbar">
-        <div class="file-btn" id="btnPickGallery">
-          🖼️ Galerie
-          <input id="fileGallery" class="hidden-file" type="file" accept="image/*" multiple />
-        </div>
-
-        <div class="file-btn" id="btnPickCamera">
-          📷 Foto
-          <input id="fileCamera" class="hidden-file" type="file" accept="image/*" capture="environment" />
-        </div>
-
-        <div style="color:var(--muted);font-size:12px">
-          Po výběru/pořízení se hned zeptá na název.
-        </div>
+      <h3>Technik a poznámky (složka)</h3>
+      <div class="grid">
+        <input id="folderTech" type="text" placeholder="Technik (např. Jakub)..." value="${escapeHtml(folder.tech || "")}" />
+        <button class="ok" id="btnSaveFolderMeta">Uložit</button>
+      </div>
+      <div style="margin-top:10px">
+        <textarea id="folderNotes" placeholder="Poznámky ke složce...">${escapeHtml(folder.notes || "")}</textarea>
+      </div>
+      <div style="margin-top:8px;color:var(--muted);font-size:12px">
+        Tyto údaje jsou pro celou složku a zůstávají uložené.
       </div>
     </div>
 
     <div class="card">
-      <h3>Technik a poznámky (složka)</h3>
-      <div class="grid">
-        <input id="folderTech" type="text" placeholder="Technik…" value="${escapeHtml(folder.tech || "")}" />
-        <button class="ok" id="btnSaveFolderMeta">Uložit</button>
-      </div>
-      <div style="margin-top:10px">
-        <textarea id="folderNotes" placeholder="Poznámky…">${escapeHtml(folder.notes || "")}</textarea>
-      </div>
-      <div style="margin-top:8px;color:var(--muted);font-size:12px">
-        Tyto údaje jsou pro celou složku a zůstávají uložené.
+      <h3>Přidat fotky</h3>
+      <div class="toolbar">
+        <label class="file-btn" title="Vybrat z galerie">
+          🖼️ Galerie
+          <input id="fileGallery" class="hidden-file" type="file" accept="image/*" multiple />
+        </label>
+        <label class="file-btn" title="Vyfotit">
+          📷 Foto
+          <input id="fileCamera" class="hidden-file" type="file" accept="image/*" capture="environment" />
+        </label>
+
+        <div style="color:var(--muted);font-size:12px">
+          Na mobilu “Foto” otevře kameru (pokud ji prohlížeč dovolí).
+        </div>
       </div>
     </div>
 
@@ -839,19 +971,18 @@ function renderFolderView(folder){
     </div>
   `;
 
+  // save folder meta
   $("#btnSaveFolderMeta").addEventListener("click", async () => {
     const tech = ($("#folderTech").value || "").trim();
     const notes = ($("#folderNotes").value || "").trim();
-    await idbPut("folders", { ...folder, tech, notes, updatedAt: nowISO() });
+    const updated = { ...folder, tech, notes, updatedAt: nowISO() };
+    await idbPut("folders", updated);
     await refresh();
   });
 
+  // pickers
   const fileGallery = $("#fileGallery");
   const fileCamera  = $("#fileCamera");
-
-  // click support (some mobiles need explicit)
-  $("#btnPickGallery").addEventListener("click", () => fileGallery.click());
-  $("#btnPickCamera").addEventListener("click", () => fileCamera.click());
 
   fileGallery.addEventListener("change", async (e) => {
     const files = Array.from(e.target.files || []);
@@ -869,17 +1000,9 @@ function renderFolderView(folder){
 
   renderPhotos(folder.id);
 
-  const backBtn = document.createElement("button");
-  backBtn.className = "secondary";
-  backBtn.textContent = "← Projekt";
-  backBtn.addEventListener("click", () => selectProject(folder.projectId));
-
-  const delFolderBtn = document.createElement("button");
-  delFolderBtn.className = "danger";
-  delFolderBtn.textContent = "🗑️ Smazat složku";
-  delFolderBtn.addEventListener("click", () => uiDeleteFolder(folder.id));
-
-  setActions([backBtn, delFolderBtn]);
+  const renameBtn = makeActionButton("✏️ Přejmenovat složku", "secondary", () => uiRenameFolder(folder.id));
+  const delFolderBtn = makeActionButton("🗑️ Smazat složku", "danger", () => uiDeleteFolder(folder.id));
+  setActions([renameBtn, delFolderBtn]);
 }
 
 function renderPhotos(folderId){
@@ -901,7 +1024,7 @@ function renderPhotos(folderId){
     const img = document.createElement("img");
     const url = URL.createObjectURL(ph.blob);
     img.src = url;
-    img.alt = ph.filename || "foto";
+    img.alt = ph.label || ph.filename || "foto";
     img.onload = () => URL.revokeObjectURL(url);
 
     const del = document.createElement("button");
@@ -911,13 +1034,12 @@ function renderPhotos(folderId){
     del.addEventListener("click", async () => {
       const ok = await confirmPopup({
         title: "Smazat fotku",
-        text: `Opravdu chceš smazat „${ph.filename}“?`,
+        text: `Opravdu chceš smazat „${ph.label || ph.filename}“?`,
         okText: "Smazat",
         cancelText: "Zrušit"
       });
       if (!ok) return;
-      await idbDel("photos", ph.id);
-      await refresh();
+      await deletePhoto(ph.id);
     });
 
     card.appendChild(img);
@@ -927,7 +1049,7 @@ function renderPhotos(folderId){
 }
 
 /* =========================
-   Select
+   Actions: select
 ========================= */
 function selectProject(projectId){
   state.selectedProjectId = projectId;
@@ -989,26 +1111,75 @@ async function createProject(name){
   state.selectedProjectId = p.id;
   state.selectedFolderId = null;
   await refresh();
-  if (isMobile()) $("#sidebar").classList.add("collapsed");
+  if (isMobile()) closeSidebar();
 }
 
+// po vytvoření složky zůstat v projektu
 async function createFolder(projectId, name){
-  const f = { id: uid(), projectId, name: name.trim(), createdAt: nowISO(), updatedAt: nowISO(), tech:"", notes:"" };
+  const f = { id: uid(), projectId, name: name.trim(), createdAt: nowISO(), tech:"", notes:"" };
   await idbPut("folders", f);
-  // stay in project view:
   state.selectedProjectId = projectId;
   state.selectedFolderId = null;
   await refresh();
 }
 
 async function uiRenameFolder(folderId){
+  const f = state.folders.find(x => x.id === folderId);
+  if (!f) return;
+  const newName = prompt("Nový název složky:", f.name);
+  if (!newName) return;
+  f.name = newName.trim() || f.name;
+  await idbPut("folders", f);
+  await refresh();
+}
+
+async function addPhotosToFolder(folderId, files){
   const folder = state.folders.find(f => f.id === folderId);
   if (!folder) return;
-  const name = prompt("Nový název složky:", folder.name);
-  if (name === null) return;
-  const n = name.trim();
-  if (!n){ alert("Název je povinný."); return; }
-  await idbPut("folders", { ...folder, name: n, updatedAt: nowISO() });
+  const projectId = folder.projectId;
+
+  for (const file of files){
+    if (!file.type.startsWith("image/")) continue;
+
+    const suggested = baseNameNoExt(file.name) || "foto";
+    const asked = prompt("Zadej název fotky:", suggested);
+
+    // Cancel -> neukládat
+    if (asked === null) continue;
+
+    const name = asked.trim();
+    // Prázdné -> neukládat (vynucení vyplnění)
+    if (!name){
+      alert("Musíš zadat název fotky.");
+      continue;
+    }
+
+    const ext = extFromMimeOrName(file);
+    const base = sanitizeName(name);
+    const filename = `${base}.${ext}`;
+
+    const rec = {
+      id: uid(),
+      projectId,
+      folderId,
+      filename,
+      type: file.type || "image/jpeg",
+      createdAt: nowISO(),
+      blob: file,
+      label: base,
+      tech: "",
+      notes: ""
+    };
+
+    await idbPut("photos", rec);
+  }
+
+  await refresh();
+}
+
+
+async function deletePhoto(photoId){
+  await idbDel("photos", photoId);
   await refresh();
 }
 
@@ -1023,9 +1194,9 @@ async function uiDeleteFolder(folderId){
   });
   if (!ok) return;
 
-  for (const ph of state.photos.filter(p => p.folderId === folderId)){
-    await idbDel("photos", ph.id);
-  }
+  const photos = state.photos.filter(p => p.folderId === folderId);
+  for (const ph of photos) await idbDel("photos", ph.id);
+
   await idbDel("folders", folderId);
   state.selectedFolderId = null;
   await refresh();
@@ -1042,8 +1213,11 @@ async function uiDeleteProject(projectId){
   });
   if (!ok) return;
 
-  for (const ph of state.photos.filter(ph => ph.projectId === projectId)) await idbDel("photos", ph.id);
-  for (const f of state.folders.filter(f => f.projectId === projectId)) await idbDel("folders", f.id);
+  const folders = state.folders.filter(f => f.projectId === projectId);
+  const photos  = state.photos.filter(ph => ph.projectId === projectId);
+
+  for (const ph of photos) await idbDel("photos", ph.id);
+  for (const f of folders) await idbDel("folders", f.id);
   await idbDel("projects", projectId);
 
   state.selectedProjectId = null;
@@ -1052,103 +1226,10 @@ async function uiDeleteProject(projectId){
 }
 
 /* =========================
-   Add photos (ask name immediately)
-========================= */
-async function addPhotosToFolder(folderId, files){
-  const folder = state.folders.find(f => f.id === folderId);
-  if (!folder) return;
-  const projectId = folder.projectId;
-
-  const existingNames = new Set(
-    state.photos.filter(p => p.folderId === folderId).map(p => (p.filename||"").toLowerCase())
-  );
-
-  for (const file of files){
-    if (!file.type.startsWith("image/")) continue;
-
-    const suggested = baseNameNoExt(file.name) || "foto";
-    const asked = prompt("Zadej název fotky:", suggested);
-    if (asked === null) continue;
-
-    const baseRaw = asked.trim();
-    if (!baseRaw){
-      alert("Musíš zadat název fotky.");
-      continue;
-    }
-
-    const ext = extFromMimeOrName(file);
-    let base = sanitizeName(baseRaw);
-    let filename = `${base}.${ext}`.toLowerCase();
-
-    // ensure unique
-    if (existingNames.has(filename)){
-      let i = 2;
-      while (existingNames.has(`${base}-${i}.${ext}`.toLowerCase())) i++;
-      base = `${base}-${i}`;
-      filename = `${base}.${ext}`.toLowerCase();
-    }
-    existingNames.add(filename);
-
-    const rec = {
-      id: uid(),
-      projectId,
-      folderId,
-      filename: `${base}.${ext}`,
-      label: base,
-      type: file.type || "image/jpeg",
-      createdAt: nowISO(),
-      blob: file
-    };
-    await idbPut("photos", rec);
-  }
-
-  await refresh();
-}
-
-/* =========================
-   PDF (project info)
-========================= */
-function pdfBytesFromText(lines){
-  const esc = (s) => String(s).replace(/\\/g,"\\\\").replace(/\(/g,"\\(").replace(/\)/g,"\\)");
-  const contentLines = [];
-  let y = 780;
-  for (const line of lines){
-    contentLines.push(`BT /F1 12 Tf 50 ${y} Td (${esc(line)}) Tj ET`);
-    y -= 16;
-    if (y < 60) break;
-  }
-  const content = contentLines.join("\n");
-  const enc = new TextEncoder();
-  const contentBytes = enc.encode(content);
-
-  const objs = [];
-  const add = (s) => objs.push(s);
-
-  add(`1 0 obj << /Type /Catalog /Pages 2 0 R >> endobj`);
-  add(`2 0 obj << /Type /Pages /Kids [3 0 R] /Count 1 >> endobj`);
-  add(`3 0 obj << /Type /Page /Parent 2 0 R /MediaBox [0 0 595 842] /Resources << /Font << /F1 4 0 R >> >> /Contents 5 0 R >> endobj`);
-  add(`4 0 obj << /Type /Font /Subtype /Type1 /BaseFont /Helvetica >> endobj`);
-  add(`5 0 obj << /Length ${contentBytes.length} >> stream\n${content}\nendstream endobj`);
-
-  let pdf = `%PDF-1.4\n`;
-  const offsets = [0];
-  for (const o of objs){
-    offsets.push(pdf.length);
-    pdf += o + "\n";
-  }
-  const xrefPos = pdf.length;
-  pdf += `xref\n0 ${objs.length+1}\n`;
-  pdf += `0000000000 65535 f \n`;
-  for (let i=1;i<=objs.length;i++){
-    const off = String(offsets[i]).padStart(10,"0");
-    pdf += `${off} 00000 n \n`;
-  }
-  pdf += `trailer << /Size ${objs.length+1} /Root 1 0 R >>\nstartxref\n${xrefPos}\n%%EOF`;
-  return enc.encode(pdf);
-}
-
-/* =========================
-   ZIP export (Windows friendly, no .txt)
+   ZIP export (no libraries)
+   - store method (no compression)
+   - supports UTF-8
+   - includes empty directories
 ========================= */
 function u16(n){ return [n & 255, (n>>>8) & 255]; }
 function u32(n){ return [n & 255, (n>>>8)&255, (n>>>16)&255, (n>>>24)&255]; }
@@ -1164,6 +1245,7 @@ const crcTable = (() => {
   }
   return table;
 })();
+
 function crc32(buf){
   let c = 0xFFFFFFFF;
   for (let i=0;i<buf.length;i++){
@@ -1171,9 +1253,8 @@ function crc32(buf){
   }
   return (c ^ 0xFFFFFFFF) >>> 0;
 }
-function utf8Bytes(str){
-  return new TextEncoder().encode(str);
-}
+function utf8Bytes(str){ return new TextEncoder().encode(str); }
+
 function msDosTime(date){
   const d = date;
   const time =
@@ -1188,179 +1269,223 @@ function msDosTime(date){
 }
 
 async function exportSelectedProject(){
-  try{
-    const pid = state.selectedProjectId;
-    const project = state.projects.find(p => p.id === pid);
-    if (!project){
-      alert("Vyber projekt.");
-      return;
-    }
-
-    const pName = sanitizeName(project.name);
-    const baseDir = `${pName}/`;
-
-    const folders = state.folders.filter(f => f.projectId === pid);
-    const photos  = state.photos.filter(ph => ph.projectId === pid);
-
-    const entries = [];
-
-    // root dir
-    entries.push({ name: baseDir, data: new Uint8Array(0), isDir:true, mtime: new Date() });
-
-    // PDF info (instead of txt)
-    const created = new Date(project.createdAt || Date.now()).toLocaleString("cs-CZ");
-    const totalPhotos = photos.length;
-    const techs = (project.techs || "").trim();
-
-    const pdf = pdfBytesFromText([
-      `Projekt: ${project.name}`,
-      `Založeno: ${created}`,
-      `Počet fotek: ${totalPhotos}`,
-      `Technici: ${techs || "—"}`,
-      ``,
-      `Export vytvořen: ${new Date().toLocaleString("cs-CZ")}`
-    ]);
-
-    entries.push({
-      name: `${baseDir}_projekt_info.pdf`,
-      data: pdf,
-      isDir: false,
-      mtime: new Date()
-    });
-
-    // folder dirs (even empty)
-    for (const f of folders){
-      const fName = sanitizeName(f.name);
-      entries.push({ name: `${baseDir}${fName}/`, data: new Uint8Array(0), isDir:true, mtime: new Date() });
-    }
-
-    // photos
-    for (const ph of photos){
-      const folder = folders.find(f => f.id === ph.folderId);
-      const folderName = folder ? sanitizeName(folder.name) : "Nezarazene";
-
-      const ext = extFromMimeOrName({ name: ph.filename, type: ph.type });
-      const base = sanitizeName(ph.label || baseNameNoExt(ph.filename) || "foto");
-      const fileName = `${base}.${ext}`;
-
-      const path = `${baseDir}${folderName}/${fileName}`;
-      const arr = new Uint8Array(await ph.blob.arrayBuffer());
-      entries.push({ name: path, data: arr, isDir:false, mtime: new Date(ph.createdAt || Date.now()) });
-    }
-
-    // --- ZIP BUILD (Windows-safe) ---
-    const outParts = [];
-    const centralParts = [];
-    let offset = 0;
-
-    for (const e of entries){
-      const nameBytes = utf8Bytes(e.name);
-      const data = e.data || new Uint8Array(0);
-
-      const { time, dt } = msDosTime(e.mtime || new Date());
-      const crc = crc32(data);
-      const size = data.length;
-
-      const gpFlag = 0x0800; // UTF-8
-      const method = 0;      // stored
-      const extAttr = e.isDir ? 0x10 : 0x00; // DOS attrs
-
-      // local header
-      const local = [
-        ...u32(0x04034b50),
-        ...u16(20),
-        ...u16(gpFlag),
-        ...u16(method),
-        ...u16(time),
-        ...u16(dt),
-        ...u32(crc),
-        ...u32(size),
-        ...u32(size),
-        ...u16(nameBytes.length),
-        ...u16(0),
-      ];
-      const localBytes = new Uint8Array(local);
-      outParts.push(localBytes, nameBytes, data);
-
-      const localOffset = offset;
-      offset += localBytes.length + nameBytes.length + data.length;
-
-      // central
-      const central = [
-        ...u32(0x02014b50),
-        ...u16(0x0014),     // made by DOS
-        ...u16(20),
-        ...u16(gpFlag),
-        ...u16(method),
-        ...u16(time),
-        ...u16(dt),
-        ...u32(crc),
-        ...u32(size),
-        ...u32(size),
-        ...u16(nameBytes.length),
-        ...u16(0),
-        ...u16(0),
-        ...u16(0),
-        ...u16(0),
-        ...u32(extAttr),
-        ...u32(localOffset),
-      ];
-      const centralBytes = new Uint8Array(central);
-      centralParts.push(centralBytes, nameBytes);
-    }
-
-    const centralSize = centralParts.reduce((s,p)=>s+p.length,0);
-    const centralOffset = offset;
-
-    outParts.push(...centralParts);
-    offset += centralSize;
-
-    const eocd = new Uint8Array([
-      ...u32(0x06054b50),
-      ...u16(0),
-      ...u16(0),
-      ...u16(entries.length),
-      ...u16(entries.length),
-      ...u32(centralSize),
-      ...u32(centralOffset),
-      ...u16(0),
-    ]);
-    outParts.push(eocd);
-
-    const zipBlob = new Blob(outParts, { type: "application/zip" });
-    downloadBlob(zipBlob, `${pName}.zip`);
-  } catch(err){
-    console.error(err);
-    alert("Export spadl: " + (err?.message || err));
+  const pid = state.selectedProjectId;
+  const project = state.projects.find(p => p.id === pid);
+  if (!project){
+    alert("Vyber projekt.");
+    return;
   }
+
+  const pName = sanitizeName(project.name);
+  const baseDir = `${pName}/`;
+
+  const folders = state.folders.filter(f => f.projectId === pid);
+  const photos = state.photos.filter(ph => ph.projectId === pid);
+
+  const entries = [];
+  entries.push({ name: baseDir, data: new Uint8Array(0), isDir:true, mtime: new Date() });
+  // Projekt info hned v rootu projektu
+const totalPhotos = photos.length;
+const created = new Date(project.createdAt || Date.now()).toLocaleString("cs-CZ");
+const techs = (project.techs || "").trim();
+
+const infoText =
+  `Projekt: ${project.name}\n` +
+  `Založeno: ${created}\n` +
+  `Počet fotek: ${totalPhotos}\n` +
+  `Technici: ${techs || "—"}\n`;
+
+entries.push({
+  name: `${baseDir}_projekt_info.txt`,
+  data: utf8Bytes(infoText),
+  isDir: false,
+  mtime: new Date()
+});
+
+
+  for (const f of folders){
+    const fName = sanitizeName(f.name);
+    entries.push({ name: `${baseDir}${fName}/`, data: new Uint8Array(0), isDir:true, mtime: new Date() });
+
+const hasFolderMeta = (f.tech && f.tech.trim()) || (f.notes && f.notes.trim());
+if (hasFolderMeta){
+  const when = new Date().toLocaleString("cs-CZ");
+  const metaText =
+    `Čas exportu: ${when}\n` +
+    `Technik: ${(f.tech || "").trim()}\n\n` +
+    `Poznámky:\n${(f.notes || "").trim()}\n`;
+
+  entries.push({
+    name: `${baseDir}${fName}/_info.txt`,
+    data: utf8Bytes(metaText),
+    isDir:false,
+    mtime: new Date()
+  });
+}
+
+  }
+
+  for (const ph of photos){
+    const folder = folders.find(f => f.id === ph.folderId);
+    const folderName = folder ? sanitizeName(folder.name) : "Nezarazene";
+
+    const ext = extFromMimeOrName({ name: ph.filename, type: ph.type });
+    const base = sanitizeName(ph.label || baseNameNoExt(ph.filename) || "foto");
+    const fileName = `${base}.${ext}`;
+    const path = `${baseDir}${folderName}/${fileName}`;
+
+    const arr = new Uint8Array(await ph.blob.arrayBuffer());
+    entries.push({ name: path, data: arr, isDir:false, mtime: new Date(ph.createdAt || Date.now()) });
+
+    // metadata per photo
+    const hasPhotoMeta =
+  (ph.tech && ph.tech.trim()) ||
+  (ph.notes && ph.notes.trim());
+
+if (hasPhotoMeta){
+  const when = new Date(ph.createdAt || Date.now()).toLocaleString("cs-CZ");
+  const metaText =
+    `Čas: ${when}\n` +
+    `Technik: ${(ph.tech || "").trim()}\n\n` +
+    `Poznámky:\n${(ph.notes || "").trim()}\n`;
+
+  entries.push({
+    name: `${baseDir}${folderName}/${base}_meta.txt`,
+    data: utf8Bytes(metaText),
+    isDir:false,
+    mtime: new Date(ph.createdAt || Date.now())
+  });
+}
+
+  }
+
+   // --- ZIP BUILD (Windows Explorer friendly) ---
+  const outParts = [];
+  const centralParts = [];
+  let offset = 0;
+
+  for (const e of entries){
+    // Windows chce složky vždy s trailing "/" (ty už máš) a nulová data (máš)
+    const nameBytes = utf8Bytes(e.name);
+    const data = e.data || new Uint8Array(0);
+
+    const { time, dt } = msDosTime(e.mtime || new Date());
+    const crc = crc32(data);
+    const size = data.length;
+
+    const gpFlag = 0x0800; // UTF-8
+    const method = 0;      // stored
+
+    // ✅ DOS external attrs – Explorer friendly:
+    // dir: 0x10, file: 0x00
+    const dosAttr = e.isDir ? 0x10 : 0x20; // dir / file
+    const extAttr32 = (dosAttr | (dosAttr << 16)) >>> 0; // set both low+high words for max compatibility
+
+    // Local file header
+    const local = [
+      ...u32(0x04034b50),
+      ...u16(20),           // version needed
+      ...u16(gpFlag),
+      ...u16(method),
+      ...u16(time),
+      ...u16(dt),
+      ...u32(crc),
+      ...u32(size),         // comp size
+      ...u32(size),         // uncomp size
+      ...u16(nameBytes.length),
+      ...u16(0),            // extra length
+    ];
+    const localBytes = new Uint8Array(local);
+    outParts.push(localBytes, nameBytes, data);
+
+    const localHeaderOffset = offset;
+    offset += localBytes.length + nameBytes.length + data.length;
+
+    // Central directory header
+    const central = [
+      ...u32(0x02014b50),
+      ...u16(0x0014),       // ✅ version made by: DOS (0) + 20
+      ...u16(20),           // version needed
+      ...u16(gpFlag),
+      ...u16(method),
+      ...u16(time),
+      ...u16(dt),
+      ...u32(crc),
+      ...u32(size),
+      ...u32(size),
+      ...u16(nameBytes.length),
+      ...u16(0),            // extra
+      ...u16(0),            // comment
+      ...u16(0),            // disk number
+      ...u16(0),            // internal attrs
+      ...u32(extAttr32),    // ✅ external attrs (DOS + mirrored)
+      ...u32(localHeaderOffset),
+    ];
+    const centralBytes = new Uint8Array(central);
+    centralParts.push(centralBytes, nameBytes);
+  }
+
+  const centralSize = centralParts.reduce((s, p) => s + p.length, 0);
+  const centralOffset = offset;
+
+  outParts.push(...centralParts);
+  offset += centralSize;
+
+  // End of central directory
+  const eocd = new Uint8Array([
+    ...u32(0x06054b50),
+    ...u16(0),                 // disk number
+    ...u16(0),                 // central dir disk
+    ...u16(entries.length),    // entries on this disk
+    ...u16(entries.length),    // total entries
+    ...u32(centralSize),
+    ...u32(centralOffset),
+    ...u16(0),                 // comment length
+  ]);
+  outParts.push(eocd);
+
+  const zipBlob = new Blob(outParts, { type: "application/zip" });
+  downloadBlob(zipBlob, `${pName}.zip`);
+}
+
+
+/* =========================
+   Drawer helpers (mobile)
+========================= */
+function openSidebar(){
+  const sb = $("#sidebar");
+  const bd = $("#drawerBackdrop");
+  sb.classList.remove("collapsed");
+  if (bd) bd.hidden = false;
+}
+function closeSidebar(){
+  const sb = $("#sidebar");
+  const bd = $("#drawerBackdrop");
+  sb.classList.add("collapsed");
+  if (bd) bd.hidden = true;
+}
+function toggleSidebar(){
+  const sb = $("#sidebar");
+  if (sb.classList.contains("collapsed")) openSidebar();
+  else closeSidebar();
 }
 
 /* =========================
    Events
 ========================= */
 $("#btnToggleSidebar").addEventListener("click", () => {
-  $("#sidebar").classList.toggle("collapsed");
-});
-$("#hdrProjects").addEventListener("click", () => {
-  if (isMobile()){
-    $("#sidebar").classList.toggle("collapsed");
-  }
+  if (isMobile()) toggleSidebar();
+  else $("#sidebar").classList.toggle("collapsed");
 });
 
-// New project buttons — keep synchronous prompt for mobile reliability
+$("#hdrProjects").addEventListener("click", () => {
+  if (isMobile()) $("#sidebar").classList.toggle("collapsed");
+});
+
 $("#btnNewProject").addEventListener("click", () => {
   const name = prompt("Název projektu:");
   if (!name) return;
-  const n = name.trim();
-  if (!n) return;
-  createProject(n);
-});
-$("#btnNewProjectTop").addEventListener("click", () => {
-  const name = prompt("Název projektu:");
-  if (!name) return;
-  const n = name.trim();
-  if (!n) return;
-  createProject(n);
+  createProject(name);
 });
 
 /* =========================
@@ -1369,8 +1494,6 @@ $("#btnNewProjectTop").addEventListener("click", () => {
 (async function init(){
   $("#chipStatus").textContent = "Offline • Lokálně (IndexedDB)";
   await refresh();
-  // Mobile: start collapsed for nicer flow
-  if (isMobile()) $("#sidebar").classList.add("collapsed");
 })();
 </script>
 </body>
